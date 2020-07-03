@@ -13,6 +13,8 @@
 Influxdb influx(INFLUXDB_HOST, INFLUXDB_PORT);
 #endif // ENABLE_DATABASE_WRITES
 
+#define BUILTIN_LED_PIN 1
+
 ESP8266WebServer server(80);
 ESP8266HTTPUpdateServer updater;
 
@@ -102,13 +104,13 @@ void handleRoot() {
 }
 
 void setup() {
-    pinMode(1, OUTPUT);
+    pinMode(BUILTIN_LED_PIN, OUTPUT);
 
     // Blink LED for init
     for (int i = 0; i < 2; i++) {
-        digitalWrite(1, LOW); // LED on
+        digitalWrite(BUILTIN_LED_PIN, LOW); // LED on
         delay(LED_INIT_BLINK_INTERVAL);
-        digitalWrite(1, HIGH); // LED off
+        digitalWrite(BUILTIN_LED_PIN, HIGH); // LED off
         delay(LED_INIT_BLINK_INTERVAL);
     }
 
@@ -121,7 +123,7 @@ void setup() {
     if ((!found_bme) && (!found_sht)) {
         // no sensor available
         while (1) {
-            digitalWrite(1, !digitalRead(1));
+            digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
             delay(LED_ERROR_BLINK_INTERVAL);
         }
     }
@@ -137,7 +139,7 @@ void setup() {
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
         delay(LED_CONNECT_BLINK_INTERVAL);
-        digitalWrite(1, !digitalRead(1));
+        digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
     }
 
 #ifdef ENABLE_DATABASE_WRITES
@@ -173,9 +175,9 @@ void writeDatabase() {
         boolean success = influx.write(measurement);
         if (!success) {
             for (int i = 0; i < 10; i++) {
-                digitalWrite(1, LOW); // LED on
+                digitalWrite(BUILTIN_LED_PIN, LOW); // LED on
                 delay(LED_ERROR_BLINK_INTERVAL);
-                digitalWrite(1, HIGH); // LED off
+                digitalWrite(BUILTIN_LED_PIN, HIGH); // LED off
                 delay(LED_ERROR_BLINK_INTERVAL);
             }
         }
@@ -193,9 +195,9 @@ void writeDatabase() {
         boolean success = influx.write(measurement);
         if (!success) {
             for (int i = 0; i < 10; i++) {
-                digitalWrite(1, LOW); // LED on
+                digitalWrite(BUILTIN_LED_PIN, LOW); // LED on
                 delay(LED_ERROR_BLINK_INTERVAL);
-                digitalWrite(1, HIGH); // LED off
+                digitalWrite(BUILTIN_LED_PIN, HIGH); // LED off
                 delay(LED_ERROR_BLINK_INTERVAL);
             }
         }
@@ -221,7 +223,7 @@ void loop() {
 #ifdef ENABLE_LED_HEARTBEAT_BLINK
     if ((time - last_led_blink_time) >= LED_BLINK_INTERVAL) {
         last_led_blink_time = time;
-        digitalWrite(1, !digitalRead(1));
+        digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
     }
 #endif // ENABLE_LED_HEARTBEAT_BLINK
 }

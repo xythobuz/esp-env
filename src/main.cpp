@@ -36,7 +36,9 @@
 
 #include "config.h"
 #include "moisture.h"
-#include "relais.h"
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+
 #include "SimpleUpdater.h"
 
 #define BUILTIN_LED_PIN 1
@@ -44,8 +46,19 @@
 UPDATE_WEB_SERVER server(80);
 SimpleUpdater updater;
 
+#elif defined(ARDUINO_ARCH_AVR)
+
+#define ESP_PLATFORM_NAME "Uno WiFi"
+#define BUILTIN_LED_PIN 13
+
+#endif
+
 #ifdef ENABLE_INFLUXDB_LOGGING
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 #include <InfluxDb.h>
+#else
+#include "SimpleInflux.h"
+#endif
 
 Influxdb influx(INFLUXDB_HOST, INFLUXDB_PORT);
 
@@ -69,7 +82,17 @@ SHT2x sht(SHT_I2C_ADDRESS, &Wire2);
 
 SHT2x sht(SHT_I2C_ADDRESS, &Wire);
 
+#elif defined(ARDUINO_ARCH_AVR)
+
+#include <UnoWiFiDevEdSerial1.h>
+#include <WiFiLink.h>
+
+WiFiServer server(80);
+SHT2x sht(SHT_I2C_ADDRESS, &Wire);
+
 #endif
+
+//#define ENABLE_RELAIS_TEST
 
 Adafruit_BME280 bme1, bme2;
 
@@ -81,6 +104,10 @@ unsigned long last_server_handle_time = 0;
 unsigned long last_db_write_time = 0;
 unsigned long last_led_blink_time = 0;
 
+#ifdef ENABLE_RELAIS_TEST
+
+#include "relais.h"
+
 static void relaisTest() {
     for (int i = 0; i < 10; i++) {
         relais_enable(i, 400 + (i * 1000));
@@ -89,150 +116,324 @@ static void relaisTest() {
 }
 
 void handleRelaisTest() {
-    String message = F("<html><head>\n");
-    message += F("<title>" ESP_PLATFORM_NAME " Environment Sensor</title>\n");
-    message += F("</head><body>\n");
-    message += F("<p>Relais Test started!</p>\n");
-    message += F("<p><a href=\"/\">Return to Home</a></p>\n");
-    message += F("</body></html>\n");
+    String message = F("<html><head>");
+    message += F("<title>" ESP_PLATFORM_NAME " Environment Sensor</title>");
+    message += F("</head><body>");
+    message += F("<p>Relais Test started!</p>");
+    message += F("<p><a href=\"/\">Return to Home</a></p>");
+    message += F("</body></html>");
     
     server.send(200, "text/html", message);
     
     relaisTest();
 }
 
+#endif // ENABLE_RELAIS_TEST
+
+static float bme1_temp(void) {
+    while (1) {
+        float a = bme1.readTemperature();
+        float b = bme1.readTemperature();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+static float bme2_temp(void) {
+    while (1) {
+        float a = bme2.readTemperature();
+        float b = bme2.readTemperature();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+static float bme1_humid(void) {
+    while (1) {
+        float a = bme1.readHumidity();
+        float b = bme1.readHumidity();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+static float bme2_humid(void) {
+    while (1) {
+        float a = bme2.readHumidity();
+        float b = bme2.readHumidity();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+static float bme1_pressure(void) {
+    while (1) {
+        float a = bme1.readPressure();
+        float b = bme1.readPressure();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+static float bme2_pressure(void) {
+    while (1) {
+        float a = bme2.readPressure();
+        float b = bme2.readPressure();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+static float sht_temp(void) {
+    while (1) {
+        float a = sht.GetTemperature();
+        float b = sht.GetTemperature();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+static float sht_humid(void) {
+    while (1) {
+        float a = sht.GetHumidity();
+        float b = sht.GetHumidity();
+        
+        if ((a > b) && ((a - b) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+        
+        if ((a < b) && ((b - a) < 2.0)) {
+            return (a + b) / 2.0;
+        }
+    }
+    return 0.0;
+}
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 void handleRoot() {
-    String message = F("<html><head>\n");
-    message += F("<title>" ESP_PLATFORM_NAME " Environment Sensor</title>\n");
-    message += F("</head><body>\n");
-    message += F("<h1>" ESP_PLATFORM_NAME " Environment Sensor</h1>\n");
-    message += F("\n<p>\n");
+#else
+void handleRoot(WiFiClient &client) {
+#endif
+    String message;
+
+    message += F("<html><head>");
+    message += F("<title>" ESP_PLATFORM_NAME " Environment Sensor</title>");
+    message += F("</head><body>");
+    message += F("<h1>" ESP_PLATFORM_NAME " Environment Sensor</h1>");
+    message += F("<p>");
     message += F("Version: ");
     message += esp_env_version;
-    message += F("\n<br>\n");
+    message += F("<br>");
     message += F("Location: ");
     message += sensor_location;
-    message += F("\n<br>\n");
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+    message += F("<br>");
     message += F("MAC: ");
     message += WiFi.macAddress();
-    message += F("\n</p>\n");
+#endif
+
+    message += F("</p>");
+
+#if defined(ARDUINO_ARCH_AVR)
+    do {
+        size_t len = message.length(), off = 0;
+        while (off < len) {
+            if ((len - off) >= 50) {
+                client.write(message.c_str() + off, 50);
+                off += 50;
+            } else {
+                client.write(message.c_str() + off, len - off);
+                off = len;
+            }
+        }
+        message = "";
+    } while (false);
+#endif
 
 #if defined(ARDUINO_ARCH_ESP8266)
     
-    message += F("\n<p>\n");
+    message += F("<p>");
     message += F("Reset reason: ");
     message += ESP.getResetReason();
-    message += F("\n<br>\n");
+    message += F("<br>");
     message += F("Free heap: ");
     message += String(ESP.getFreeHeap());
     message += F(" (");
     message += String(ESP.getHeapFragmentation());
     message += F("% fragmentation)");
-    message += F("\n<br>\n");
+    message += F("<br>");
     message += F("Free sketch space: ");
     message += String(ESP.getFreeSketchSpace());
-    message += F("\n<br>\n");
+    message += F("<br>");
     message += F("Flash chip real size: ");
     message += String(ESP.getFlashChipRealSize());
 
     if (ESP.getFlashChipSize() != ESP.getFlashChipRealSize()) {
-        message += F("\n<br>\n");
+        message += F("<br>");
         message += F("WARNING: sdk chip size (");
         message += (ESP.getFlashChipSize());
         message += F(") does not match!");
     }
     
-    message += F("\n</p>\n");
+    message += F("</p>");
     
 #elif defined(ARDUINO_ARCH_ESP32)
 
-    message += F("\n<p>\n");
+    message += F("<p>");
     message += F("Free heap: ");
     message += String(ESP.getFreeHeap() / 1024.0);
-    message += F("k\n<br>\n");
+    message += F("k<br>");
     message += F("Free sketch space: ");
     message += String(ESP.getFreeSketchSpace() / 1024.0);
-    message += F("k\n<br>\n");
+    message += F("k<br>");
     message += F("Flash chip size: ");
     message += String(ESP.getFlashChipSize() / 1024.0);
-    message += F("k\n</p>\n");
+    message += F("k</p>");
     
 #endif
 
-    message += F("\n<p>\n");
+    message += F("<p>");
     if (found_bme1) {
         message += F("BME280 Low:");
-        message += F("\n<br>\n");
+        message += F("<br>");
         message += F("Temperature: ");
-        message += String(bme1.readTemperature());
-        message += F("\n<br>\n");
+        message += String(bme1_temp());
+        message += F("<br>");
         message += F("Humidity: ");
-        message += String(bme1.readHumidity());
-        message += F("\n<br>\n");
+        message += String(bme1_humid());
+        message += F("<br>");
         message += F("Pressure: ");
-        message += String(bme1.readPressure());
+        message += String(bme1_pressure());
     } else {
         message += F("BME280 (low) not connected!");
     }
-    message += F("\n</p>\n");
+    message += F("</p>");
 
-    message += F("\n<p>\n");
+    message += F("<p>");
     if (found_bme2) {
         message += F("BME280 High:");
-        message += F("\n<br>\n");
+        message += F("<br>");
         message += F("Temperature: ");
-        message += String(bme2.readTemperature());
-        message += F("\n<br>\n");
+        message += String(bme2_temp());
+        message += F("<br>");
         message += F("Humidity: ");
-        message += String(bme2.readHumidity());
-        message += F("\n<br>\n");
+        message += String(bme2_humid());
+        message += F("<br>");
         message += F("Pressure: ");
-        message += String(bme2.readPressure());
+        message += String(bme2_pressure());
     } else {
         message += F("BME280 (high) not connected!");
     }
-    message += F("\n</p>\n");
+    message += F("</p>");
 
-    message += F("\n<p>\n");
+    message += F("<p>");
     if (found_sht) {
         message += F("SHT21:");
-        message += F("\n<br>\n");
+        message += F("<br>");
         message += F("Temperature: ");
-        message += String(sht.GetTemperature());
-        message += F("\n<br>\n");
+        message += String(sht_temp());
+        message += F("<br>");
         message += F("Humidity: ");
-        message += String(sht.GetHumidity());
+        message += String(sht_humid());
     } else {
-        message += F("SHT21 not connected!");
+        //message += F("SHT21 not connected!");
     }
-    message += F("\n</p>\n");
+    message += F("</p>");
+
+#if defined(ARDUINO_ARCH_AVR)
+    do {
+        size_t len = message.length(), off = 0;
+        while (off < len) {
+            if ((len - off) >= 50) {
+                client.write(message.c_str() + off, 50);
+                off += 50;
+            } else {
+                client.write(message.c_str() + off, len - off);
+                off = len;
+            }
+        }
+        message = "";
+    } while (false);
+#endif
 
     for (int i = 0; i < moisture_count(); i++) {
         int moisture = moisture_read(i);
         if (moisture < moisture_max()) {
-            message += F("\n<p>\n");
+            message += F("<p>");
             message += F("Sensor ");
             message += String(i + 1);
-            message += F(":\n<br>\n");
+            message += F(":<br>");
             message += F("Moisture: ");
             message += String(moisture);
             message += F(" / ");
             message += String(moisture_max());
-            message += F("\n</p>\n");
+            message += F("</p>");
         }
     }
     
     if (moisture_count() <= 0) {
-        message += F("\n<p>\n");
+        message += F("<p>");
         message += F("No moisture sensors configured!");
-        message += F("\n</p>\n");
+        message += F("</p>");
     }
 
-    message += F("<p>\n");
-    message += F("Try <a href=\"/update\">/update</a> for OTA firmware updates!\n");
-    message += F("</p>\n");
+#if ! defined(ARDUINO_ARCH_AVR)
+    message += F("<p>");
+    message += F("Try <a href=\"/update\">/update</a> for OTA firmware updates!");
+    message += F("</p>");
+#endif
     
-    message += F("<p>\n");
+    message += F("<p>");
 #ifdef ENABLE_INFLUXDB_LOGGING
     message += F("InfluxDB: ");
     message += INFLUXDB_DATABASE;
@@ -240,22 +441,41 @@ void handleRoot() {
     message += INFLUXDB_HOST;
     message += F(":");
     message += String(INFLUXDB_PORT);
-    message += F("\n");
 #else
-    message += F("InfluxDB logging not enabled!\n");
+    message += F("InfluxDB logging not enabled!");
 #endif
-    message += F("</p>\n");
+    message += F("</p>");
     
-    message += F("<p><a href=\"/relaistest\">Relais Test</a></p>\n");
-    message += F("</body></html>\n");
+#ifdef ENABLE_RELAIS_TEST
+    message += F("<p><a href=\"/relaistest\">Relais Test</a></p>");
+#endif // ENABLE_RELAIS_TEST
 
+    message += F("</body></html>");
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
     server.send(200, "text/html", message);
+#else
+    do {
+        size_t len = message.length(), off = 0;
+        while (off < len) {
+            if ((len - off) >= 50) {
+                client.write(message.c_str() + off, 50);
+                off += 50;
+            } else {
+                client.write(message.c_str() + off, len - off);
+                off = len;
+            }
+        }
+    } while (false);
+#endif
 }
 
 void setup() {
     pinMode(BUILTIN_LED_PIN, OUTPUT);
     
+#ifdef ENABLE_RELAIS_TEST
     relais_init();
+#endif // ENABLE_RELAIS_TEST
 
     // Blink LED for init
     for (int i = 0; i < 2; i++) {
@@ -275,6 +495,12 @@ void setup() {
     found_bme2 = (!bme2.begin(BME_I2C_ADDRESS_2, &Wire2)) ? false : true;
 
 #elif defined(ARDUINO_ARCH_ESP32)
+
+    Wire.begin();
+    found_bme1 = (!bme1.begin(BME_I2C_ADDRESS_1, &Wire)) ? false : true;
+    found_bme2 = (!bme2.begin(BME_I2C_ADDRESS_2, &Wire)) ? false : true;
+
+#elif defined(ARDUINO_ARCH_AVR)
 
     Wire.begin();
     found_bme1 = (!bme1.begin(BME_I2C_ADDRESS_1, &Wire)) ? false : true;
@@ -326,6 +552,22 @@ void setup() {
     // Set hostname workaround
     WiFi.setHostname(hostname.c_str());
 
+#elif defined(ARDUINO_ARCH_AVR)
+
+    Serial.begin(115200);
+    Serial1.begin(115200);
+
+    WiFi.init(&Serial1);
+
+    Serial.print(F("Connecting WiFi"));
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(LED_CONNECT_BLINK_INTERVAL);
+        digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
+        Serial.print(F("."));
+    }
+    Serial.println(F("\nWiFi connected!"));
+
 #endif
 
 #ifdef ENABLE_INFLUXDB_LOGGING
@@ -333,23 +575,83 @@ void setup() {
     influx.setDb(INFLUXDB_DATABASE);
 #endif // ENABLE_INFLUXDB_LOGGING
 
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
     // Setup HTTP Server
     MDNS.begin(hostname.c_str());
     updater.setup(&server);
     server.on("/", handleRoot);
+
+#ifdef ENABLE_RELAIS_TEST
     server.on("/relaistest", handleRelaisTest);
-    server.begin();
+#endif
+
     MDNS.addService("http", "tcp", 80);
+#endif
+
+    server.begin();
 }
 
+#if defined(ARDUINO_ARCH_AVR)
+void http_server() {
+    // listen for incoming clients
+    WiFiClient client = server.available();
+    if (client) {
+        Serial.println(F("new http client"));
+
+        // an http request ends with a blank line
+        boolean currentLineIsBlank = true;
+
+        while (client.connected()) {
+            if (client.available()) {
+                char c = client.read();
+                Serial.write(c);
+
+                // if you've gotten to the end of the line (received a newline
+                // character) and the line is blank, the http request has ended,
+                // so you can send a reply
+                if ((c == '\n') && currentLineIsBlank) {
+                    // send a standard http response header
+                    client.println(F("HTTP/1.1 200 OK"));
+                    client.println(F("Content-Type: text/html"));
+                    client.println(F("Connection: close"));
+                    client.println();
+                    handleRoot(client);
+                    break;
+                }
+
+                if (c == '\n') {
+                    // you're starting a new line
+                    currentLineIsBlank = true;
+                } else if (c != '\r') {
+                    // you've gotten a character on the current line
+                    currentLineIsBlank = false;
+                }
+            }
+        }
+
+        // give the web browser time to receive the data
+        delay(10);
+
+        // close the connection
+        client.stop();
+        Serial.println(F("http client disconnected"));
+    }
+}
+#endif
+
 void handleServers() {
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
     server.handleClient();
+#else
+    http_server();
+#endif
     
 #if defined(ARDUINO_ARCH_ESP8266)
     MDNS.update();
 #endif
 }
 
+#ifdef ENABLE_INFLUXDB_LOGGING
 static boolean writeMeasurement(InfluxData &measurement) {
     boolean success = influx.write(measurement);
     if (!success) {
@@ -364,68 +666,124 @@ static boolean writeMeasurement(InfluxData &measurement) {
     return success;
 }
 
-#ifdef ENABLE_INFLUXDB_LOGGING
 void writeDatabase() {
+#if defined(ARDUINO_ARCH_AVR)
+    Serial.println(F("Writing to InfluxDB"));
+
+    InfluxData measurement("");
+#endif
+
     if (found_bme1) {
+#if defined(ARDUINO_ARCH_AVR)
+        measurement.clear();
+        measurement.setName("environment");
+#else
         InfluxData measurement("environment");
+#endif
+
         measurement.addTag("location", sensor_location);
         measurement.addTag("placement", "1");
-        measurement.addTag("device", WiFi.macAddress());
         measurement.addTag("sensor", "bme280");
 
-        measurement.addValue("temperature", bme1.readTemperature());
-        measurement.addValue("pressure", bme1.readPressure());
-        measurement.addValue("humidity", bme1.readHumidity());
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+        measurement.addTag("device", WiFi.macAddress());
+#endif
 
+        measurement.addValue("temperature", bme1_temp());
+        measurement.addValue("pressure", bme1_pressure());
+        measurement.addValue("humidity", bme1_humid());
+
+        Serial.println(F("Writing bme1"));
         writeMeasurement(measurement);
+        Serial.println(F("Done!"));
     }
+
     if (found_bme2) {
+#if defined(ARDUINO_ARCH_AVR)
+        measurement.clear();
+        measurement.setName("environment");
+#else
         InfluxData measurement("environment");
+#endif
+
         measurement.addTag("location", sensor_location);
         measurement.addTag("placement", "2");
-        measurement.addTag("device", WiFi.macAddress());
         measurement.addTag("sensor", "bme280");
 
-        measurement.addValue("temperature", bme2.readTemperature());
-        measurement.addValue("pressure", bme2.readPressure());
-        measurement.addValue("humidity", bme2.readHumidity());
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+        measurement.addTag("device", WiFi.macAddress());
+#endif
 
+        measurement.addValue("temperature", bme2_temp());
+        measurement.addValue("pressure", bme2_pressure());
+        measurement.addValue("humidity", bme2_humid());
+
+        Serial.println(F("Writing bme2"));
         writeMeasurement(measurement);
+        Serial.println(F("Done!"));
     }
 
     if (found_sht) {
+#if defined(ARDUINO_ARCH_AVR)
+        measurement.clear();
+        measurement.setName("environment");
+#else
         InfluxData measurement("environment");
+#endif
+
         measurement.addTag("location", sensor_location);
-        measurement.addTag("device", WiFi.macAddress());
         measurement.addTag("sensor", "sht21");
 
-        measurement.addValue("temperature", sht.GetTemperature());
-        measurement.addValue("humidity", sht.GetHumidity());
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+        measurement.addTag("device", WiFi.macAddress());
+#endif
 
+        measurement.addValue("temperature", sht_temp());
+        measurement.addValue("humidity", sht_humid());
+
+        Serial.println(F("Writing sht"));
         writeMeasurement(measurement);
+        Serial.println(F("Done!"));
     }
     
     for (int i = 0; i < moisture_count(); i++) {
         int moisture = moisture_read(i);
         if (moisture < moisture_max()) {
+#if defined(ARDUINO_ARCH_AVR)
+            measurement.clear();
+            measurement.setName("moisture");
+#else
             InfluxData measurement("moisture");
+#endif
+
             measurement.addTag("location", sensor_location);
+            String sensor(i + 1, DEC);
+            measurement.addTag("sensor", sensor);
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
             measurement.addTag("device", WiFi.macAddress());
-            measurement.addTag("sensor", String(i + 1));
+#endif
 
             measurement.addValue("value", moisture);
             measurement.addValue("maximum", moisture_max());
 
+            Serial.print(F("Writing moisture "));
+            Serial.println(i);
             writeMeasurement(measurement);
+            Serial.println(F("Done!"));
         }
     }
+
+    Serial.println(F("All Done!"));
 }
 #endif // ENABLE_INFLUXDB_LOGGING
 
 void loop() {
     unsigned long time = millis();
     
+#ifdef ENABLE_RELAIS_TEST
     relais_run();
+#endif // ENABLE_RELAIS_TEST
 
     if ((time - last_server_handle_time) >= SERVER_HANDLE_INTERVAL) {
         last_server_handle_time = time;
@@ -440,14 +798,24 @@ void loop() {
     
 #ifdef INFLUX_MAX_ERRORS_RESET
     if (error_count >= INFLUX_MAX_ERRORS_RESET) {
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
         ESP.restart();
+#endif
     }
 #endif // INFLUX_MAX_ERRORS_RESET
 #endif // ENABLE_INFLUXDB_LOGGING
 
+    // blink heartbeat LED
     if ((time - last_led_blink_time) >= LED_BLINK_INTERVAL) {
         last_led_blink_time = time;
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
     }
+    
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+    // reset ESP every 6h to be safe
+    if (time >= (6 * 60 * 60 * 1000)) {
+        ESP.restart();
+    }
+#endif
 }
 

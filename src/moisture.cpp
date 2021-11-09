@@ -79,5 +79,26 @@ void moisture_init(void) {
     }
 }
 
+#elif defined(ARDUINO_ARCH_AVR)
+
+#define SENSOR_COUNT 6
+uint8_t sensor_pins[SENSOR_COUNT] = { A0, A1, A2, A3, A4, A5 };
+
+int moisture_count(void) {
+    return 6;
+}
+
+int moisture_read(int sensor) {
+    return (analogRead(sensor_pins[sensor]) << 2) | 3;
+}
+
+int moisture_max(void) {
+    return 4095;
+}
+
+void moisture_init(void) {
+
+}
+
 #endif
 

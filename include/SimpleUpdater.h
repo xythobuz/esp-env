@@ -21,9 +21,9 @@
 #elif defined(ARDUINO_ARCH_ESP32)
 #include <WebServer.h>
 #define UPDATE_WEB_SERVER WebServer
-#else
-#error Platform not supported!
 #endif
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 
 class SimpleUpdater {
 public:
@@ -47,6 +47,8 @@ private:
     String uri;
     UPDATE_WEB_SERVER *server;
 };
+
+#endif
 
 #endif // __ESP_SIMPLE_UPDATER__
 

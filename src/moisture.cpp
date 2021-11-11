@@ -81,15 +81,24 @@ void moisture_init(void) {
 
 #elif defined(ARDUINO_ARCH_AVR)
 
+// Hardware I2C pins A4 and A5 not usable on Arduino Uno Wifi Dev. Ed.
 #define SENSOR_COUNT 6
-uint8_t sensor_pins[SENSOR_COUNT] = { A0, A1, A2, A3, A4, A5 };
+uint8_t sensor_pins[SENSOR_COUNT] = { A0, A1, A1, A2, A3, A3 };
+
+#define OVERSAMPLE_COUNT 3
 
 int moisture_count(void) {
-    return 6;
+    return SENSOR_COUNT;
 }
 
 int moisture_read(int sensor) {
-    return (analogRead(sensor_pins[sensor]) << 2) | 3;
+    unsigned long val = 0;
+    for (int i = 0; i < OVERSAMPLE_COUNT; i++) {
+        val += analogRead(sensor_pins[sensor]);
+    }
+    val /= OVERSAMPLE_COUNT;
+    if (val >= 1010) val = 1023; // avoid noisy data in db
+    return (int)((val << 2) | 3);
 }
 
 int moisture_max(void) {

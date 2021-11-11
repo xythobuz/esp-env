@@ -12,7 +12,6 @@
  */
 
 #include <Arduino.h>
-#include <Wire.h>
 #include <Adafruit_BME280.h>
 #include <SHT2x.h>
 
@@ -39,6 +38,7 @@
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 
+#include <Wire.h>
 #include "SimpleUpdater.h"
 
 #define BUILTIN_LED_PIN 1
@@ -269,20 +269,20 @@ void handleRoot(WiFiClient &client) {
     message += F("<title>" ESP_PLATFORM_NAME " Environment Sensor</title>");
     message += F("</head><body>");
     message += F("<h1>" ESP_PLATFORM_NAME " Environment Sensor</h1>");
-    message += F("<p>");
+    message += F("\n<p>\n");
     message += F("Version: ");
     message += esp_env_version;
-    message += F("<br>");
+    message += F("\n<br>\n");
     message += F("Location: ");
     message += sensor_location;
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-    message += F("<br>");
+    message += F("\n<br>\n");
     message += F("MAC: ");
     message += WiFi.macAddress();
 #endif
 
-    message += F("</p>");
+    message += F("\n</p>\n");
 
 #if defined(ARDUINO_ARCH_AVR)
     do {
@@ -342,53 +342,53 @@ void handleRoot(WiFiClient &client) {
     
 #endif
 
-    message += F("<p>");
+    message += F("\n<p>\n");
     if (found_bme1) {
         message += F("BME280 Low:");
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Temperature: ");
         message += String(bme1_temp());
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Humidity: ");
         message += String(bme1_humid());
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Pressure: ");
         message += String(bme1_pressure());
     } else {
         message += F("BME280 (low) not connected!");
     }
-    message += F("</p>");
+    message += F("\n</p>\n");
 
-    message += F("<p>");
+    message += F("\n<p>\n");
     if (found_bme2) {
         message += F("BME280 High:");
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Temperature: ");
         message += String(bme2_temp());
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Humidity: ");
         message += String(bme2_humid());
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Pressure: ");
         message += String(bme2_pressure());
     } else {
         message += F("BME280 (high) not connected!");
     }
-    message += F("</p>");
+    message += F("\n</p>\n");
 
-    message += F("<p>");
+    message += F("\n<p>\n");
     if (found_sht) {
         message += F("SHT21:");
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Temperature: ");
         message += String(sht_temp());
-        message += F("<br>");
+        message += F("\n<br>\n");
         message += F("Humidity: ");
         message += String(sht_humid());
     } else {
-        //message += F("SHT21 not connected!");
+        message += F("SHT21 not connected!");
     }
-    message += F("</p>");
+    message += F("\n</p>\n");
 
 #if defined(ARDUINO_ARCH_AVR)
     do {
@@ -409,22 +409,22 @@ void handleRoot(WiFiClient &client) {
     for (int i = 0; i < moisture_count(); i++) {
         int moisture = moisture_read(i);
         if (moisture < moisture_max()) {
-            message += F("<p>");
+            message += F("\n<p>\n");
             message += F("Sensor ");
             message += String(i + 1);
-            message += F(":<br>");
+            message += F(":\n<br>\n");
             message += F("Moisture: ");
             message += String(moisture);
             message += F(" / ");
             message += String(moisture_max());
-            message += F("</p>");
+            message += F("\n</p>\n");
         }
     }
     
     if (moisture_count() <= 0) {
-        message += F("<p>");
+        message += F("\n<p>\n");
         message += F("No moisture sensors configured!");
-        message += F("</p>");
+        message += F("\n</p>\n");
     }
 
 #if ! defined(ARDUINO_ARCH_AVR)
@@ -502,7 +502,6 @@ void setup() {
 
 #elif defined(ARDUINO_ARCH_AVR)
 
-    Wire.begin();
     found_bme1 = (!bme1.begin(BME_I2C_ADDRESS_1, &Wire)) ? false : true;
     found_bme2 = (!bme2.begin(BME_I2C_ADDRESS_2, &Wire)) ? false : true;
 

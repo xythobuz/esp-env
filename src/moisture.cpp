@@ -14,23 +14,7 @@
 #include <Arduino.h>
 #include "moisture.h"
 
-#if defined(ARDUINO_ARCH_ESP8266)
-
-int moisture_count(void) {
-    return 0;
-}
-
-int moisture_read(int sensor) {
-    return 0;
-}
-
-int moisture_max(void) {
-    return 0;
-}
-
-void moisture_init(void) { }
-
-#elif defined(ARDUINO_ARCH_ESP32)
+#if defined(MOISTURE_ADC_ESP32)
 
 #include <driver/adc.h>
 
@@ -56,6 +40,13 @@ static int adc_read_oversampled(adc1_channel_t pin) {
     return sample_sum / ADC_OVERSAMPLE;
 }
 
+void moisture_init(void) {
+    adc1_config_width(ADC_BITS);
+    for (int i = 0; i < SENSOR_COUNT; i++) {
+        adc1_config_channel_atten(sensor_pin[i], ADC_ATTENUATION);
+    }
+}
+
 int moisture_count(void) {
     return SENSOR_COUNT;
 }
@@ -72,20 +63,17 @@ int moisture_max(void) {
     return (1 << ADC_BITWIDTH) - 1;
 }
 
-void moisture_init(void) {
-    adc1_config_width(ADC_BITS);
-    for (int i = 0; i < SENSOR_COUNT; i++) {
-        adc1_config_channel_atten(sensor_pin[i], ADC_ATTENUATION);
-    }
-}
-
-#elif defined(ARDUINO_ARCH_AVR)
+#elif defined(MOISTURE_ADC_ARDUINO)
 
 // Hardware I2C pins A4 and A5 not usable on Arduino Uno Wifi Dev. Ed.
 #define SENSOR_COUNT 6
 uint8_t sensor_pins[SENSOR_COUNT] = { A0, A1, A1, A2, A3, A3 };
 
 #define OVERSAMPLE_COUNT 3
+
+void moisture_init(void) {
+
+}
 
 int moisture_count(void) {
     return SENSOR_COUNT;
@@ -105,9 +93,20 @@ int moisture_max(void) {
     return 4095;
 }
 
-void moisture_init(void) {
+#else
 
+void moisture_init(void) { }
+
+int moisture_count(void) {
+    return 0;
+}
+
+int moisture_read(int sensor) {
+    return 0;
+}
+
+int moisture_max(void) {
+    return 0;
 }
 
 #endif
-

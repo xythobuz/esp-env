@@ -14,10 +14,10 @@
 #ifndef __ESP_RELAIS_ACTOR__
 #define __ESP_RELAIS_ACTOR__
 
-int relais_count(void);
-int relais_enable(int relais, unsigned long time);
 void relais_init(void);
-void relais_run(void);
+int relais_count(void);
+void relais_set(int relais, int state);
+int relais_get(int relais);
+String relais_name(int relais);
 
 #endif // __ESP_RELAIS_ACTOR__
-

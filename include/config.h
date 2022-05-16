@@ -15,32 +15,29 @@
 #define __ESP_ENV_CONFIG__
 
 // Sketch version
-const char* esp_env_version = "0.4.0";
+#define ESP_ENV_VERSION "0.5.0"
 
 // location of sensor, used in DB and hostname
-//const char* sensor_location = "livingroom";
-//const char* sensor_location = "bedroom";
-//const char* sensor_location = "bathroom";
-//const char* sensor_location = "kitchen";
-//const char* sensor_location = "hallway";
-//const char* sensor_location = "tent";
-//const char* sensor_location = "storage";
-//const char* sensor_location = "greenhouse";
-const char* sensor_location = "testing";
-
-#define SENSOR_HOSTNAME_PREFIX "ESP-"
+//#define SENSOR_LOCATION_LIVINGROOM
+//#define SENSOR_LOCATION_BEDROOM
+//#define SENSOR_LOCATION_BATHROOM
+//#define SENSOR_LOCATION_GREENHOUSE
+#define SENSOR_LOCATION_TESTING
 
 // WiFi AP settings
-const char* ssid = "WIFI_SSID_HERE";
-const char* password = "WIFI_PASSWORD_HERE";
+#define WIFI_SSID "WIFI_SSID_HERE"
+#define WIFI_PASS "WIFI_PASSWORD_HERE"
+
+// MQTT settings
+#define MQTT_HOST "MQTT_IP_HERE"
+#define MQTT_PORT 1883
+#define MQTT_USER "USERNAME" // undef to disable auth
+#define MQTT_PASS "PASSWORD" // undef to disable auth
 
 // InfluxDB settings
 #define INFLUXDB_HOST "INFLUX_IP_HERE"
 #define INFLUXDB_PORT 8086
 #define INFLUXDB_DATABASE "roomsensorsdiy"
-
-// feature selection
-#define ENABLE_INFLUXDB_LOGGING
 
 // all given in milliseconds
 #define SERVER_HANDLE_INTERVAL 10
@@ -49,6 +46,28 @@ const char* password = "WIFI_PASSWORD_HERE";
 #define LED_INIT_BLINK_INTERVAL 500
 #define LED_CONNECT_BLINK_INTERVAL 250
 #define LED_ERROR_BLINK_INTERVAL 100
+#define MQTT_RECONNECT_INTERVAL (5 * 1000)
+
+#if defined(SENSOR_LOCATION_LIVINGROOM)
+#define SENSOR_LOCATION "livingroom"
+#elif defined(SENSOR_LOCATION_BEDROOM)
+#define SENSOR_LOCATION "bedroom"
+#elif defined(SENSOR_LOCATION_BATHROOM)
+#define SENSOR_LOCATION "bathroom"
+#elif defined(SENSOR_LOCATION_GREENHOUSE)
+#define SENSOR_LOCATION "greenhouse"
+#elif defined(SENSOR_LOCATION_TESTING)
+#define SENSOR_LOCATION "testing"
+#else
+#define SENSOR_LOCATION "unknown"
+#endif
+
+#if defined(RELAIS_SERIAL) || defined(RELAIS_GPIO)
+#define FEATURE_RELAIS
+#endif
+
+#if defined(MOISTURE_ADC_ESP32) || defined(MOISTURE_ADC_ARDUINO)
+#define FEATURE_MOISTURE
+#endif
 
 #endif // __ESP_ENV_CONFIG__
-

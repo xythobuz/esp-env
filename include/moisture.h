@@ -14,10 +14,9 @@
 #ifndef __ESP_ADC_MOISTURE_SENSOR__
 #define __ESP_ADC_MOISTURE_SENSOR__
 
+void moisture_init(void);
 int moisture_count(void);
 int moisture_read(int sensor);
 int moisture_max(void);
-void moisture_init(void);
 
 #endif // __ESP_ADC_MOISTURE_SENSOR__
-

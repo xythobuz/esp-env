@@ -12,6 +12,7 @@
  */
 
 #include <Arduino.h>
+#include "DebugLog.h"
 #include "SimpleInflux.h"
 
 #if defined(ARDUINO_ARCH_AVR)
@@ -43,8 +44,8 @@ void InfluxData::addValue(const char *name, double value) {
 boolean Influxdb::write(InfluxData &data) {
 #if defined(ARDUINO_ARCH_AVR)
 
-    Serial.print(F("Writing "));
-    Serial.println(data.dataName());
+    debug.print(F("Writing "));
+    debug.println(data.dataName());
 
     client.stop();
 
@@ -103,7 +104,7 @@ boolean Influxdb::write(InfluxData &data) {
             if (client.available()) {
                 char c = client.read();
                 if (c != '\r') {
-                    Serial.write(c);
+                    debug.write(c);
                 }
 
                 if (compare_off == compare_to.length()) {
@@ -132,10 +133,10 @@ boolean Influxdb::write(InfluxData &data) {
         }
 
         client.stop();
-        Serial.println(contains_error ? F("Request failed") : F("Request Done"));
+        debug.println(contains_error ? F("Request failed") : F("Request Done"));
         return !contains_error;
     } else {
-        Serial.println(F("Error connecting"));
+        debug.println(F("Error connecting"));
         return false; // failed
     }
 #else

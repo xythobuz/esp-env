@@ -38,6 +38,16 @@ static String names[SERIAL_RELAIS_COUNT] = {
     String("light_big"),
     String("relais_2"),
     String("fan")
+#elif defined(SENSOR_LOCATION_LIVINGROOM_WORKSPACE)
+    String("light_pc"),
+    String("light_bench"),
+    String("relais_w2"),
+    String("relais_w3")
+#elif defined(SENSOR_LOCATION_LIVINGROOM_TV)
+    String("light_amp"),
+    String("light_box"),
+    String("light_kitchen"),
+    String("relais_t3")
 #else
     String("relais_0"),
     String("relais_1"),

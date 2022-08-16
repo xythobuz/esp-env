@@ -15,10 +15,12 @@
 #define __ESP_ENV_CONFIG__
 
 // Sketch version
-#define ESP_ENV_VERSION "0.5.0"
+#define ESP_ENV_VERSION "0.6.0"
 
 // location of sensor, used in DB and hostname
 //#define SENSOR_LOCATION_LIVINGROOM
+//#define SENSOR_LOCATION_LIVINGROOM_WORKSPACE
+//#define SENSOR_LOCATION_LIVINGROOM_TV
 //#define SENSOR_LOCATION_BEDROOM
 //#define SENSOR_LOCATION_BATHROOM
 //#define SENSOR_LOCATION_GREENHOUSE
@@ -38,10 +40,13 @@
 #define INFLUXDB_HOST "INFLUX_IP_HERE"
 #define INFLUXDB_PORT 8086
 #define INFLUXDB_DATABASE "roomsensorsdiy"
+#define INFLUX_MAX_ERRORS_RESET 10
 
 // all given in milliseconds
 #define SERVER_HANDLE_INTERVAL 10
+#define SENSOR_HANDLE_INTERVAL (5 * 1000)
 #define DB_WRITE_INTERVAL (30 * 1000)
+#define MQTT_WRITE_INTERVAL (30 * 1000)
 #define LED_BLINK_INTERVAL (2 * 1000)
 #define LED_INIT_BLINK_INTERVAL 500
 #define LED_CONNECT_BLINK_INTERVAL 250
@@ -50,16 +55,28 @@
 
 #if defined(SENSOR_LOCATION_LIVINGROOM)
 #define SENSOR_LOCATION "livingroom"
+#define SENSOR_ID SENSOR_LOCATION
+#elif defined(SENSOR_LOCATION_LIVINGROOM_WORKSPACE)
+#define SENSOR_LOCATION "livingroom"
+#define SENSOR_ID "livingroom-workspace"
+#elif defined(SENSOR_LOCATION_LIVINGROOM_TV)
+#define SENSOR_LOCATION "livingroom"
+#define SENSOR_ID "livingroom-tv"
 #elif defined(SENSOR_LOCATION_BEDROOM)
 #define SENSOR_LOCATION "bedroom"
+#define SENSOR_ID SENSOR_LOCATION
 #elif defined(SENSOR_LOCATION_BATHROOM)
 #define SENSOR_LOCATION "bathroom"
+#define SENSOR_ID SENSOR_LOCATION
 #elif defined(SENSOR_LOCATION_GREENHOUSE)
 #define SENSOR_LOCATION "greenhouse"
+#define SENSOR_ID SENSOR_LOCATION
 #elif defined(SENSOR_LOCATION_TESTING)
 #define SENSOR_LOCATION "testing"
+#define SENSOR_ID SENSOR_LOCATION
 #else
 #define SENSOR_LOCATION "unknown"
+#define SENSOR_ID SENSOR_LOCATION
 #endif
 
 #if defined(RELAIS_SERIAL) || defined(RELAIS_GPIO)
@@ -68,6 +85,12 @@
 
 #if defined(MOISTURE_ADC_ESP32) || defined(MOISTURE_ADC_ARDUINO)
 #define FEATURE_MOISTURE
+#endif
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#define BUILTIN_LED_PIN 1
+#elif defined(ARDUINO_ARCH_AVR)
+#define BUILTIN_LED_PIN 13
 #endif
 
 #endif // __ESP_ENV_CONFIG__

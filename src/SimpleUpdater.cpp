@@ -11,8 +11,6 @@
  * ----------------------------------------------------------------------------
  */
 
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-
 #if defined(ARDUINO_ARCH_ESP8266)
 #include <ESP8266HTTPUpdateServer.h>
 #elif defined(ARDUINO_ARCH_ESP32)
@@ -25,46 +23,68 @@
 
 void SimpleUpdater::get(void) {
     String uploadPage = F(
-        "<html><head>"
-        "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>"
-        "<title>SimpleUpdater ESP32</title>"
-        "</head><body>"
-        "<h1>SimpleUpdater</h1>"
-        "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>"
-        "<input type='file' name='update'>"
-        "<input type='submit' value='Update'>"
-        "</form>"
-        "<div id='prg'>progress: 0%</div>"
-        "<a href=\"/\">Back to Main Page</a>"
-        "<script>"
-        "$('form').submit(function(e){"
-        "e.preventDefault();"
-        "var form = $('#upload_form')[0];"
-        "var data = new FormData(form);"
-        " $.ajax({"
-        "url: '/update',"
-        "type: 'POST',"
-        "data: data,"
-        "contentType: false,"
-        "processData:false,"
-        "xhr: function() {"
-        "var xhr = new window.XMLHttpRequest();"
-        "xhr.upload.addEventListener('progress', function(evt) {"
-        "if (evt.lengthComputable) {"
-        "var per = evt.loaded / evt.total;"
-        "$('#prg').html('progress: ' + Math.round(per*100) + '%');"
-        "}"
-        "}, false);"
-        "return xhr;"
-        "},"
-        "success:function(d, s) {"
-        "console.log('success!')" 
-        "},"
-        "error: function (a, b, c) {"
-        "}"
-        "});"
-        "});"
-        "</script>"
+        "<!DOCTYPE html>\n"
+        "<html><head>\n"
+        "<meta charset='utf-8'/>\n"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'/>\n"
+        "<script src='https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js'></script>\n"
+        "<title>SimpleUpdater ESP32</title>\n"
+        "<style>\n"
+        "@media (prefers-color-scheme: dark) {\n"
+            "body {\n"
+                "background-color: black;\n"
+                "color: white;\n"
+            "}\n"
+        "}\n"
+        "</style>\n"
+        "</head><body>\n"
+
+        "<h1>SimpleUpdater</h1>\n"
+        "<p>Select the update file. If you have built this project with PlatformIO, you can find a firmware.bin in the .pio folder.</p>\n"
+        "<form method='POST' action='#' enctype='multipart/form-data' id='upload_form'>\n"
+        "<input type='file' name='update' accept='.bin'>\n"
+        "<input type='submit' value='Update'>\n"
+        "</form><br>\n"
+        "<div id='prg'>progress: 0%</div>\n"
+        "<p>After the update is finished, you will automatically be redirected to the main page.</p>\n"
+        "<a href=\"/\">Back to Main Page</a>\n"
+
+        "<script>\n"
+        "$('form').submit(function(e){\n"
+            "e.preventDefault();\n"
+            "var form = $('#upload_form')[0];\n"
+            "var data = new FormData(form);\n"
+            " $.ajax({\n"
+                "url: '/update',\n"
+                "type: 'POST',\n"
+                "data: data,\n"
+                "contentType: false,\n"
+                "processData:false,\n"
+                "xhr: function() {\n"
+                    "var xhr = new window.XMLHttpRequest();\n"
+                    "xhr.upload.addEventListener('progress', function(evt) {\n"
+                        "if (evt.lengthComputable) {\n"
+                            "var per = evt.loaded / evt.total;\n"
+                            "$('#prg').html('progress: ' + Math.round(per*100) + '%');\n"
+                        "}\n"
+                    "}, false);\n"
+                    "return xhr;\n"
+                "},\n"
+                "success: function(d, s) {\n"
+                    "$('#prg').html('progress: success! redirecting...');\n"
+                    "setTimeout(function() {\n"
+                        "window.location.href = '/';\n"
+                    "}, 3000);\n"
+                "},\n"
+                "error: function(a, b, c) {\n"
+                    "$('#prg').html('progress: finished! redirecting...');\n"
+                    "setTimeout(function() {\n"
+                        "window.location.href = '/';\n"
+                    "}, 1000);\n"
+                "}\n"
+            "});\n"
+        "});\n"
+        "</script>\n"
         "</body></html>"
     );
     
@@ -101,6 +121,8 @@ void SimpleUpdater::postUpload(void) {
 }
 
 #endif
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 
 void SimpleUpdater::setup(UPDATE_WEB_SERVER *_server) {
     if (_server == NULL) {

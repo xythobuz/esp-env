@@ -13,8 +13,11 @@
 
 #include <Arduino.h>
 
-#include <Adafruit_BME280.h>
 #include <SHT2x.h>
+
+#ifdef ENABLE_BME280
+#include <Adafruit_BME280.h>
+#endif // ENABLE_BME280
 
 #ifdef ENABLE_CCS811
 #include <Adafruit_CCS811.h>
@@ -51,10 +54,12 @@ static SHT2x sht(SHT_I2C_ADDRESS, &Wire);
 
 #endif
 
+#ifdef ENABLE_BME280
 static Adafruit_BME280 bme1, bme2;
-
 bool found_bme1 = false;
 bool found_bme2 = false;
+#endif // ENABLE_BME280
+
 bool found_sht = false;
 
 #ifdef ENABLE_CCS811
@@ -68,6 +73,8 @@ int ccs2_error_code = 0;
 #endif // ENABLE_CCS811
 
 static unsigned long last_sensor_handle_time = 0;
+
+#ifdef ENABLE_BME280
 
 float bme1_temp(void) {
     while (1) {
@@ -165,6 +172,8 @@ float bme2_pressure(void) {
     return 0.0;
 }
 
+#endif // ENABLE_BME280
+
 float sht_temp(void) {
     while (1) {
         float a = sht.GetTemperature() + config.sht_temp_off;
@@ -218,12 +227,14 @@ float ccs2_tvoc(void) {
 static void ccs_update() {
     if (found_ccs1) {
         if (ccs1.available()) {
-            if (found_bme1) {
+            if (found_sht) {
+                ccs1.setEnvironmentalData(sht_humid(), sht_temp());
+#ifdef ENABLE_BME280
+            } else if (found_bme1) {
                 ccs1.setEnvironmentalData(bme1_humid(), bme1_temp());
             } else if (found_bme2) {
                 ccs1.setEnvironmentalData(bme2_humid(), bme2_temp());
-            } else if (found_sht) {
-                ccs1.setEnvironmentalData(sht_humid(), sht_temp());
+#endif // ENABLE_BME280
             }
 
             ccs1_error_code = ccs1.readData();
@@ -233,12 +244,14 @@ static void ccs_update() {
 
     if (found_ccs2) {
         if (ccs2.available()) {
-            if (found_bme1) {
+            if (found_sht) {
+                ccs2.setEnvironmentalData(sht_humid(), sht_temp());
+#ifdef ENABLE_BME280
+            } else if (found_bme1) {
                 ccs2.setEnvironmentalData(bme1_humid(), bme1_temp());
             } else if (found_bme2) {
                 ccs2.setEnvironmentalData(bme2_humid(), bme2_temp());
-            } else if (found_sht) {
-                ccs2.setEnvironmentalData(sht_humid(), sht_temp());
+#endif // ENABLE_BME280
             }
 
             ccs2_error_code = ccs2.readData();
@@ -252,6 +265,8 @@ static void ccs_update() {
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 void handleCalibrate() {
     bool diff = false;
+
+#ifdef ENABLE_BME280
 
     if (server.hasArg("bme1")) {
         diff = true;
@@ -269,6 +284,8 @@ void handleCalibrate() {
         config.bme2_temp_off = real_temp - meas_temp;
     }
 
+#endif // ENABLE_BME280
+
     if (server.hasArg("sht")) {
         diff = true;
         String off_string = server.arg("sht");
@@ -278,6 +295,7 @@ void handleCalibrate() {
     }
 
     if (diff) {
+#ifdef ENABLE_BME280
         if (found_bme1) {
             bme1.setTemperatureCompensation(config.bme1_temp_off);
         }
@@ -285,6 +303,7 @@ void handleCalibrate() {
         if (found_bme2) {
             bme2.setTemperatureCompensation(config.bme2_temp_off);
         }
+#endif // ENABLE_BME280
 
         mem_write(config);
         handlePage(42);
@@ -301,9 +320,11 @@ void initSensors() {
     debug.println(F("Wire2"));
     Wire2.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 
+#ifdef ENABLE_BME280
     debug.println(F("BME"));
     found_bme1 = (!bme1.begin(BME_I2C_ADDRESS_1, &Wire2)) ? false : true;
     found_bme2 = (!bme2.begin(BME_I2C_ADDRESS_2, &Wire2)) ? false : true;
+#endif // ENABLE_BME280
 
 #ifdef ENABLE_CCS811
     debug.println(F("CCS"));
@@ -318,9 +339,11 @@ void initSensors() {
     Wire.begin();
 #endif
 
+#ifdef ENABLE_BME280
     debug.println(F("BME"));
     found_bme1 = (!bme1.begin(BME_I2C_ADDRESS_1, &Wire)) ? false : true;
     found_bme2 = (!bme2.begin(BME_I2C_ADDRESS_2, &Wire)) ? false : true;
+#endif // ENABLE_BME280
 
 #ifdef ENABLE_CCS811
     debug.println(F("CCS"));
@@ -333,6 +356,7 @@ void initSensors() {
     debug.println(F("SHT"));
     found_sht = sht.GetAlive();
 
+#ifdef ENABLE_BME280
     // initialize temperature offsets
     if (found_bme1) {
         bme1.setTemperatureCompensation(config.bme1_temp_off);
@@ -340,6 +364,7 @@ void initSensors() {
     if (found_bme2) {
         bme2.setTemperatureCompensation(config.bme2_temp_off);
     }
+#endif // ENABLE_BME280
 }
 
 void runSensors() {

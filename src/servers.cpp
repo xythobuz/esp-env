@@ -29,12 +29,15 @@
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 
-#include <WebSocketsServer.h>
 #include "SimpleUpdater.h"
 
 UPDATE_WEB_SERVER server(80);
 SimpleUpdater updater;
+
+#ifdef ENABLE_WEBSOCKETS
+#include <WebSocketsServer.h>
 WebSocketsServer socket(81);
+#endif // ENABLE_WEBSOCKETS
 
 #elif defined(ARDUINO_ARCH_AVR)
 
@@ -57,11 +60,11 @@ WiFiServer server(80);
 
 static unsigned long last_server_handle_time = 0;
 
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 void wifi_send_websocket(String s) {
+#ifdef ENABLE_WEBSOCKETS
     socket.broadcastTXT(s);
+#endif // ENABLE_WEBSOCKETS
 }
-#endif
 
 #ifdef FEATURE_RELAIS
 
@@ -143,7 +146,9 @@ void initServers(String hostname) {
 
     MDNS.addService("http", "tcp", 80);
 
+#ifdef ENABLE_WEBSOCKETS
     socket.begin();
+#endif // ENABLE_WEBSOCKETS
 #endif
 
     server.begin();
@@ -220,7 +225,9 @@ void runServers() {
         handleServers();
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#ifdef ENABLE_WEBSOCKETS
         socket.loop();
+#endif // ENABLE_WEBSOCKETS
 #endif
     }
     

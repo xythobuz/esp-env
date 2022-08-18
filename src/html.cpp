@@ -163,6 +163,8 @@ void handlePage(WiFiClient &client, int mode, int id) {
     
 #endif
 
+#ifdef ENABLE_BME280
+
     message += F("\n<p>\n");
     if (found_bme1) {
         message += F("BME280 Low:");
@@ -212,6 +214,8 @@ void handlePage(WiFiClient &client, int mode, int id) {
         message += F("BME280 (high) not connected!");
     }
     message += F("\n</p><hr>\n");
+
+#endif // ENABLE_BME280
 
     ARDUINO_SEND_PARTIAL_PAGE();
 
@@ -370,16 +374,16 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += String(millis() / 1000);
     message += F(" sec.</p>");
 
-#if ! defined(ARDUINO_ARCH_AVR)
+#ifdef ENABLE_DEBUGLOG
     message += F("<hr><p>Debug Log:</p>");
     message += F("<div class='log'><pre id='logbuf'>");
     message += debug.getBuffer();
     message += F("</pre></div>");
-#endif
+#endif // ENABLE_DEBUGLOG
 
     message += F("</body>");
 
-#if ! defined(ARDUINO_ARCH_AVR)
+#ifdef ENABLE_WEBSOCKETS
     message += F("<script type='text/javascript'>\n");
     message += F("var socket = new WebSocket('ws://' + window.location.hostname + ':81');\n");
     message += F("socket.onmessage = function(e) {");
@@ -394,7 +398,7 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F("var hist = document.getElementsByClassName('log')[0];\n");
     message += F("hist.scrollTop = hist.scrollHeight;\n");
     message += F("</script>\n");
-#endif
+#endif // ENABLE_WEBSOCKETS
 
     message += F("</html>");
 

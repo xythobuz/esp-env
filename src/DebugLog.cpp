@@ -13,13 +13,12 @@
 
 #include <Arduino.h>
 
+#include "servers.h"
 #include "DebugLog.h"
 
 DebugLog debug;
 
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-
-void wifi_send_websocket(String s);
+#ifdef ENABLE_DEBUGLOG
 
 String DebugLog::getBuffer(void) {
     String r;
@@ -40,10 +39,8 @@ void DebugLog::addToBuffer(String s) {
 void DebugLog::sendToTargets(String s) {
     Serial.print(s);
     
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
     s = "log:" + s;
     wifi_send_websocket(s);
-#endif
 }
 
 void DebugLog::write(char c) {
@@ -51,9 +48,9 @@ void DebugLog::write(char c) {
 }
 
 void DebugLog::print(String s) {
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#ifdef ENABLE_DEBUGLOG
     addToBuffer(s);
-#endif
+#endif // ENABLE_DEBUGLOG
     
     sendToTargets(s);
 }

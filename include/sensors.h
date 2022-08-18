@@ -14,15 +14,19 @@
 #ifndef __SENSORS_H__
 #define __SENSORS_H__
 
+float sht_temp(void);
+float sht_humid(void);
+extern bool found_sht;
+
+#ifdef ENABLE_BME280
 float bme1_temp(void);
 float bme2_temp(void);
 float bme1_humid(void);
 float bme2_humid(void);
 float bme1_pressure(void);
 float bme2_pressure(void);
-float sht_temp(void);
-float sht_humid(void);
-extern bool found_bme1, found_bme2, found_sht;
+extern bool found_bme1, found_bme2;
+#endif // ENABLE_BME280
 
 #ifdef ENABLE_CCS811
 float ccs1_eco2(void);

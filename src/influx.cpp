@@ -96,6 +96,8 @@ void writeDatabase() {
     InfluxData measurement("");
 #endif
 
+#ifdef ENABLE_BME280
+
     if (found_bme1) {
 #if defined(ARDUINO_ARCH_AVR)
         measurement.clear();
@@ -147,6 +149,8 @@ void writeDatabase() {
         writeMeasurement(measurement);
         debug.println(F("Done!"));
     }
+
+#endif // ENABLE_BME280
 
     if (found_sht) {
 #if defined(ARDUINO_ARCH_AVR)

@@ -16,16 +16,16 @@
 
 #include <Arduino.h>
 
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#ifdef ENABLE_DEBUGLOG
 #include <CircularBuffer.h>
 #define DEBUG_LOG_HISTORY_SIZE 1024
-#endif
+#endif // ENABLE_DEBUGLOG
 
 class DebugLog {
 public:
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#ifdef ENABLE_DEBUGLOG
     String getBuffer(void);
-#endif
+#endif // ENABLE_DEBUGLOG
     
     void write(char c);
     void print(String s);
@@ -38,11 +38,11 @@ public:
 private:
     void sendToTargets(String s);
     
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#ifdef ENABLE_DEBUGLOG
     void addToBuffer(String s);
     
     CircularBuffer<char, DEBUG_LOG_HISTORY_SIZE> buffer;
-#endif
+#endif // ENABLE_DEBUGLOG
 };
 
 extern DebugLog debug;

@@ -53,7 +53,11 @@ static void writeMQTT() {
         return;
     }
 
-    if (found_bme1) {
+    if (found_sht) {
+        mqtt.publish(SENSOR_LOCATION "/temperature", String(sht_temp()).c_str(), true);
+        mqtt.publish(SENSOR_LOCATION "/humidity", String(sht_humid()).c_str(), true);
+#ifdef ENABLE_BME280
+    } else if (found_bme1) {
         mqtt.publish(SENSOR_LOCATION "/temperature", String(bme1_temp()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/humidity", String(bme1_humid()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/pressure", String(bme1_pressure()).c_str(), true);
@@ -61,9 +65,7 @@ static void writeMQTT() {
         mqtt.publish(SENSOR_LOCATION "/temperature", String(bme2_temp()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/humidity", String(bme2_humid()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/pressure", String(bme2_pressure()).c_str(), true);
-    } else if (found_sht) {
-        mqtt.publish(SENSOR_LOCATION "/temperature", String(sht_temp()).c_str(), true);
-        mqtt.publish(SENSOR_LOCATION "/humidity", String(sht_humid()).c_str(), true);
+#endif // ENABLE_BME280
     }
 
 #ifdef ENABLE_CCS811
@@ -78,11 +80,21 @@ static void writeMQTT() {
 }
 
 static void mqttCallback(char* topic, byte* payload, unsigned int length) {
+    String ts(topic), ps;
+    for (unsigned int i = 0; i < length; i++) {
+        char c = payload[i];
+        ps += c;
+    }
+
+    debug.print(F("MQTT Rx @ \""));
+    debug.print(ts);
+    debug.print(F("\" = \""));
+    debug.print(ps);
+    debug.println(F("\""));
+
 #ifdef FEATURE_RELAIS
     int state = 0;
     int id = -1;
-
-    String ts(topic), ps((char *)payload);
 
     String our_topic(SENSOR_LOCATION);
     our_topic += "/";

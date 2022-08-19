@@ -105,6 +105,12 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F("Version: ");
     message += ESP_ENV_VERSION;
     message += F("\n<br>\n");
+    message += F("Build Date: ");
+    message += __DATE__;
+    message += F("\n<br>\n");
+    message += F("Build Time: ");
+    message += __TIME__;
+    message += F("\n<br>\n");
     message += F("Location: ");
     message += SENSOR_LOCATION;
     message += F("\n<br>\n");

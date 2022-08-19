@@ -74,137 +74,37 @@ int ccs2_error_code = 0;
 
 static unsigned long last_sensor_handle_time = 0;
 
+#define DEF_SENSOR_READ_FUNC(n, v)        \
+float n(void) {                           \
+    while (1) {                           \
+        float a = v;                      \
+        float b = v;                      \
+                                          \
+        if ((a > b) && ((a - b) < 2.0)) { \
+            return (a + b) / 2.0;         \
+        }                                 \
+                                          \
+        if ((a < b) && ((b - a) < 2.0)) { \
+            return (a + b) / 2.0;         \
+        }                                 \
+                                          \
+        /* to keep wdt happy */           \
+        delay(1);                         \
+    }                                     \
+    return 0.0;                           \
+}
+
 #ifdef ENABLE_BME280
-
-float bme1_temp(void) {
-    while (1) {
-        float a = bme1.readTemperature();
-        float b = bme1.readTemperature();
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
-
-float bme2_temp(void) {
-    while (1) {
-        float a = bme2.readTemperature();
-        float b = bme2.readTemperature();
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
-
-float bme1_humid(void) {
-    while (1) {
-        float a = bme1.readHumidity();
-        float b = bme1.readHumidity();
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
-
-float bme2_humid(void) {
-    while (1) {
-        float a = bme2.readHumidity();
-        float b = bme2.readHumidity();
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
-
-float bme1_pressure(void) {
-    while (1) {
-        float a = bme1.readPressure();
-        float b = bme1.readPressure();
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
-
-float bme2_pressure(void) {
-    while (1) {
-        float a = bme2.readPressure();
-        float b = bme2.readPressure();
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
-
+DEF_SENSOR_READ_FUNC(bme1_temp, bme1.readTemperature())
+DEF_SENSOR_READ_FUNC(bme2_temp, bme2.readTemperature())
+DEF_SENSOR_READ_FUNC(bme1_humid, bme1.readHumidity())
+DEF_SENSOR_READ_FUNC(bme2_humid, bme2.readHumidity())
+DEF_SENSOR_READ_FUNC(bme1_pressure, bme1.readPressure())
+DEF_SENSOR_READ_FUNC(bme2_pressure, bme2.readPressure())
 #endif // ENABLE_BME280
 
-float sht_temp(void) {
-    while (1) {
-        float a = sht.GetTemperature() + config.sht_temp_off;
-        float b = sht.GetTemperature() + config.sht_temp_off;
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
-
-float sht_humid(void) {
-    while (1) {
-        float a = sht.GetHumidity();
-        float b = sht.GetHumidity();
-        
-        if ((a > b) && ((a - b) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-        
-        if ((a < b) && ((b - a) < 2.0)) {
-            return (a + b) / 2.0;
-        }
-    }
-    return 0.0;
-}
+DEF_SENSOR_READ_FUNC(sht_temp, sht.GetTemperature() + config.sht_temp_off)
+DEF_SENSOR_READ_FUNC(sht_humid, sht.GetHumidity())
 
 #ifdef ENABLE_CCS811
 

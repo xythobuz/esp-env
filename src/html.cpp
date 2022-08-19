@@ -73,7 +73,7 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F("<html><head>");
     message += F("<meta charset='utf-8'/>");
     message += F("<meta name='viewport' content='width=device-width, initial-scale=1'/>");
-    message += F("<title>" ESP_PLATFORM_NAME " Environment Sensor</title>");
+    message += F("<title>" ESP_PLATFORM_NAME " " NAME_OF_FEATURE "</title>");
     message += F("<style>");
     message += F(".log {\n");
     message += F(    "max-height: 300px;\n");
@@ -100,7 +100,7 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F("}");
     message += F("</style>");
     message += F("</head><body>");
-    message += F("<h1>" ESP_PLATFORM_NAME " Environment Sensor</h1>");
+    message += F("<h1>" ESP_PLATFORM_NAME " " NAME_OF_FEATURE "</h1>");
     message += F("\n<p>\n");
     message += F("Version: ");
     message += ESP_ENV_VERSION;

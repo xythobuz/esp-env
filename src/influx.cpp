@@ -41,7 +41,7 @@
 
 #endif
 
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#ifdef USE_INFLUXDB_LIB
 #include <InfluxDb.h>
 #else
 #include "SimpleInflux.h"
@@ -52,7 +52,6 @@ static int error_count = 0;
 static unsigned long last_db_write_time = 0;
 
 void initInflux() {
-    debug.println(F("Influx"));
     influx.setDb(INFLUXDB_DATABASE);
 }
 
@@ -67,6 +66,7 @@ void runInflux() {
 #ifdef INFLUX_MAX_ERRORS_RESET
     if (error_count >= INFLUX_MAX_ERRORS_RESET) {
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+        debug.println(F("Resetting due to too many Influx errors"));
         ESP.restart();
 #else
         // TODO implement watchdog reset for AVR
@@ -90,16 +90,14 @@ static boolean writeMeasurement(InfluxData &measurement) {
 }
 
 void writeDatabase() {
-#if defined(ARDUINO_ARCH_AVR)
-    debug.println(F("Writing to InfluxDB"));
-
+#ifndef USE_INFLUXDB_LIB
     InfluxData measurement("");
 #endif
 
 #ifdef ENABLE_BME280
 
     if (found_bme1) {
-#if defined(ARDUINO_ARCH_AVR)
+#ifndef USE_INFLUXDB_LIB
         measurement.clear();
         measurement.setName("environment");
 #else
@@ -112,7 +110,7 @@ void writeDatabase() {
         measurement.addTag("sensor", "bme280");
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress());
+        measurement.addTag("device", WiFi.macAddress().c_str());
 #endif
 
         measurement.addValue("temperature", bme1_temp());
@@ -125,7 +123,7 @@ void writeDatabase() {
     }
 
     if (found_bme2) {
-#if defined(ARDUINO_ARCH_AVR)
+#ifndef USE_INFLUXDB_LIB
         measurement.clear();
         measurement.setName("environment");
 #else
@@ -138,7 +136,7 @@ void writeDatabase() {
         measurement.addTag("sensor", "bme280");
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress());
+        measurement.addTag("device", WiFi.macAddress().c_str());
 #endif
 
         measurement.addValue("temperature", bme2_temp());
@@ -153,7 +151,7 @@ void writeDatabase() {
 #endif // ENABLE_BME280
 
     if (found_sht) {
-#if defined(ARDUINO_ARCH_AVR)
+#ifndef USE_INFLUXDB_LIB
         measurement.clear();
         measurement.setName("environment");
 #else
@@ -165,7 +163,7 @@ void writeDatabase() {
         measurement.addTag("sensor", "sht21");
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress());
+        measurement.addTag("device", WiFi.macAddress().c_str());
 #endif
 
         measurement.addValue("temperature", sht_temp());
@@ -179,7 +177,7 @@ void writeDatabase() {
 #ifdef ENABLE_CCS811
 
     if (found_ccs1) {
-#if defined(ARDUINO_ARCH_AVR)
+#ifndef USE_INFLUXDB_LIB
         measurement.clear();
         measurement.setName("environment");
 #else
@@ -195,7 +193,7 @@ void writeDatabase() {
         measurement.addTag("error", err);
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress());
+        measurement.addTag("device", WiFi.macAddress().c_str());
 #endif
 
         measurement.addValue("eco2", ccs1_eco2());
@@ -207,7 +205,7 @@ void writeDatabase() {
     }
 
     if (found_ccs2) {
-#if defined(ARDUINO_ARCH_AVR)
+#ifndef USE_INFLUXDB_LIB
         measurement.clear();
         measurement.setName("environment");
 #else
@@ -223,7 +221,7 @@ void writeDatabase() {
         measurement.addTag("error", err);
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress());
+        measurement.addTag("device", WiFi.macAddress().c_str());
 #endif
 
         measurement.addValue("eco2", ccs2_eco2());
@@ -240,7 +238,7 @@ void writeDatabase() {
     for (int i = 0; i < moisture_count(); i++) {
         int moisture = moisture_read(i);
         if (moisture < moisture_max()) {
-#if defined(ARDUINO_ARCH_AVR)
+#ifndef USE_INFLUXDB_LIB
             measurement.clear();
             measurement.setName("moisture");
 #else
@@ -253,7 +251,7 @@ void writeDatabase() {
             measurement.addTag("sensor", sensor);
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-            measurement.addTag("device", WiFi.macAddress());
+            measurement.addTag("device", WiFi.macAddress().c_str());
 #endif
 
             measurement.addValue("value", moisture);
@@ -276,7 +274,7 @@ void writeDatabase() {
         measurement.addTag("name", relais_name(i));
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress());
+        measurement.addTag("device", WiFi.macAddress().c_str());
 #endif
 
         measurement.addValue("state", relais_get(i));

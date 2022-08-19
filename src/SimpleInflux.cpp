@@ -15,12 +15,15 @@
 #include "DebugLog.h"
 #include "SimpleInflux.h"
 
+#ifndef USE_INFLUXDB_LIB
+
 #if defined(ARDUINO_ARCH_AVR)
-
 #include <WiFiLink.h>
-
 WiFiClient client;
-
+#elif defined(ARDUINO_ARCH_ESP8266)
+#include <ESP8266WiFi.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClient.h>
 #endif
 
 void InfluxData::addTag(const char *name, const char *value) {
@@ -42,10 +45,10 @@ void InfluxData::addValue(const char *name, double value) {
 // https://docs.influxdata.com/influxdb/v1.8/guides/write_data/
 
 boolean Influxdb::write(InfluxData &data) {
-#if defined(ARDUINO_ARCH_AVR)
+    //debug.print(F("Writing "));
+    //debug.println(data.dataName());
 
-    debug.print(F("Writing "));
-    debug.println(data.dataName());
+#if defined(ARDUINO_ARCH_AVR)
 
     client.stop();
 
@@ -139,9 +142,69 @@ boolean Influxdb::write(InfluxData &data) {
         debug.println(F("Error connecting"));
         return false; // failed
     }
+
+#elif defined(ARDUINO_ARCH_ESP8266)
+
+    String content = data.dataName();
+    for (int i = 0; i < data.tagCount(); i++) {
+        content += F(",");
+        content += data.tagName(i);
+        content += F("=");
+        //content += F("\"");
+        content += data.tagValue(i);
+        //content += F("\"");
+    }
+    content += F(" ");
+    for (int i = 0; i < data.valueCount(); i++) {
+        if (i > 0) {
+            content += F(",");
+        }
+        content += data.valueName(i);
+        content += F("=");
+        content += data.valueValue(i);
+    }
+    // we're leaving out the timestamp, it's optional
+
+    WiFiClient client;
+    HTTPClient http;
+
+    http.setReuse(false);
+    http.setTimeout(1500); // ms
+
+    String uri("/write?db=");
+    uri += db_name;
+
+    http.begin(client, db_host, db_port, uri, false);
+
+    //debug.print(F("Sending to Influx: "));
+    //debug.println(content);
+
+    int httpResponseCode = http.POST(content);
+    String payload = http.getString();
+
+    String compare_to(F("X-Influxdb-Error"));
+    bool result = false; // error
+
+    if ((httpResponseCode >= 200) && (httpResponseCode <= 299)
+            && (payload.indexOf(compare_to) < 0)) {
+        result = true; // success
+    } else {
+        debug.print(F("Got "));
+        debug.print(httpResponseCode);
+        debug.print(F(" response from Influx: "));
+        debug.println(payload);
+    }
+
+    http.end();
+    return result;
+
+#elif defined(ARDUINO_ARCH_ESP32)
+#error Not implemented for ESP32 yet
 #else
 
     return true; // success
 
 #endif
 }
+
+#endif

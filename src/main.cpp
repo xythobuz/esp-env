@@ -37,10 +37,26 @@ unsigned long last_led_blink_time = 0;
 
 ConfigMemory config;
 
+#if defined(ARDUINO_ARCH_ESP8266)
+
+WiFiEventHandler disconnectHandler;
+
+void onDisconnected(const WiFiEventStationModeDisconnected& event) {
+    /*
+     * simply restart in case we lose wifi connection
+     * we can't do anything useful without wifi anyway!
+     */
+    ESP.restart();
+}
+
+#endif // ARDUINO_ARCH_ESP8266
+
 void setup() {
     pinMode(BUILTIN_LED_PIN, OUTPUT);
     
     Serial.begin(115200);
+
+    debug.println(F("Initializing..."));
 
     // Blink LED for init
     for (int i = 0; i < 2; i++) {
@@ -70,6 +86,7 @@ void setup() {
     debug.print(F("Connecting WiFi"));
     WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
+    WiFi.hostname(hostname);
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED) {
         delay(LED_CONNECT_BLINK_INTERVAL);
@@ -77,6 +94,11 @@ void setup() {
         debug.print(F("."));
     }
     debug.println(F("\nWiFi connected!"));
+
+    disconnectHandler = WiFi.onStationModeDisconnected(onDisconnected);
+
+    // Set hostname workaround
+    WiFi.hostname(hostname);
     
 #elif defined(ARDUINO_ARCH_ESP32)
 
@@ -84,14 +106,18 @@ void setup() {
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     WiFi.setHostname(hostname.c_str());
     
-    // Workaround for WiFi connecting only every 2nd reset
-    // https://github.com/espressif/arduino-esp32/issues/2501#issuecomment-513602522
     WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
-        if (info.disconnected.reason == 202) {
-            esp_sleep_enable_timer_wakeup(10);
-            esp_deep_sleep_start();
-            delay(100);
-        }
+        /*
+         * was initially: workaround for WiFi connecting only every 2nd reset
+         * https://github.com/espressif/arduino-esp32/issues/2501#issuecomment-513602522
+         *
+         * now simply reset on every disconnect reason - we can't do anything
+         * useful without wifi anyway!
+         */
+        esp_sleep_enable_timer_wakeup(10);
+        esp_deep_sleep_start();
+        delay(100);
+        ESP.restart();
     }, WiFiEvent_t::SYSTEM_EVENT_STA_DISCONNECTED);
 
     // Connect to WiFi AP
@@ -128,9 +154,16 @@ void setup() {
     debug.println(F("Seeding"));
     randomSeed(micros());
 
+    debug.println(F("MQTT"));
     initMQTT();
+
+    debug.println(F("Influx"));
     initInflux();
+
+    debug.println(F("Servers"));
     initServers(hostname);
+
+    debug.println(F("Ready! Starting..."));
 }
 
 void loop() {
@@ -146,11 +179,4 @@ void loop() {
         last_led_blink_time = time;
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
     }
-    
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-    // reset ESP every 3d to be safe
-    if (time >= (3UL * 24UL * 60UL * 60UL * 1000UL)) {
-        ESP.restart();
-    }
-#endif
 }

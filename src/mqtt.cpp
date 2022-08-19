@@ -53,18 +53,23 @@ static void writeMQTT() {
         return;
     }
 
+    bool wrote = false;
+
     if (found_sht) {
         mqtt.publish(SENSOR_LOCATION "/temperature", String(sht_temp()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/humidity", String(sht_humid()).c_str(), true);
+        wrote = true;
 #ifdef ENABLE_BME280
     } else if (found_bme1) {
         mqtt.publish(SENSOR_LOCATION "/temperature", String(bme1_temp()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/humidity", String(bme1_humid()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/pressure", String(bme1_pressure()).c_str(), true);
+        wrote = true;
     } else if (found_bme2) {
         mqtt.publish(SENSOR_LOCATION "/temperature", String(bme2_temp()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/humidity", String(bme2_humid()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/pressure", String(bme2_pressure()).c_str(), true);
+        wrote = true;
 #endif // ENABLE_BME280
     }
 
@@ -72,11 +77,17 @@ static void writeMQTT() {
     if (found_ccs1) {
         mqtt.publish(SENSOR_LOCATION "/eco2", String(ccs1_eco2()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/tvoc", String(ccs1_tvoc()).c_str(), true);
+        wrote = true;
     } else if (found_ccs2) {
         mqtt.publish(SENSOR_LOCATION "/eco2", String(ccs2_eco2()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/tvoc", String(ccs2_tvoc()).c_str(), true);
+        wrote = true;
     }
 #endif // ENABLE_CCS811
+
+    if (wrote) {
+        debug.println(F("Updated MQTT sensor values"));
+    }
 }
 
 static void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -163,7 +174,6 @@ static void mqttReconnect() {
 }
 
 void initMQTT() {
-    debug.println(F("MQTT"));
     mqtt.setServer(MQTT_HOST, MQTT_PORT);
     mqtt.setCallback(mqttCallback);
 }

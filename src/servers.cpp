@@ -132,7 +132,6 @@ static void handleRoot(WiFiClient &client) {
 void initServers(String hostname) {
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
     // Setup HTTP Server
-    debug.println(F("HTTP"));
     MDNS.begin(hostname.c_str());
     updater.setup(&server);
     server.on("/", handleRoot);

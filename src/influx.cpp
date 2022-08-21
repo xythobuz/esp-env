@@ -89,29 +89,35 @@ static boolean writeMeasurement(InfluxData &measurement) {
     return success;
 }
 
-void writeDatabase() {
-#ifndef USE_INFLUXDB_LIB
-    InfluxData measurement("");
+static void addTagsGeneric(InfluxData &measurement) {
+    measurement.addTag("location", SENSOR_LOCATION);
+    measurement.addTag("location-id", SENSOR_ID);
+
+#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+    measurement.addTag("device", WiFi.macAddress().c_str());
+#endif
+}
+
+static void addTagsSensor(InfluxData &measurement, String sensor, String placement) {
+    addTagsGeneric(measurement);
+    measurement.addTag("sensor", sensor);
+    measurement.addTag("placement", placement);
+}
+
+#ifdef FEATURE_RELAIS
+static void addTagsRelais(InfluxData &measurement, String id, String name) {
+    addTagsGeneric(measurement);
+    measurement.addTag("id", id);
+    measurement.addTag("name", name);
+}
 #endif
 
+void writeDatabase() {
 #ifdef ENABLE_BME280
 
     if (found_bme1) {
-#ifndef USE_INFLUXDB_LIB
-        measurement.clear();
-        measurement.setName("environment");
-#else
         InfluxData measurement("environment");
-#endif
-
-        measurement.addTag("location", SENSOR_LOCATION);
-        measurement.addTag("location-id", SENSOR_ID);
-        measurement.addTag("placement", "1");
-        measurement.addTag("sensor", "bme280");
-
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress().c_str());
-#endif
+        addTagsSensor(measurement, F("bme280"), F("1"));
 
         measurement.addValue("temperature", bme1_temp());
         measurement.addValue("pressure", bme1_pressure());
@@ -123,21 +129,8 @@ void writeDatabase() {
     }
 
     if (found_bme2) {
-#ifndef USE_INFLUXDB_LIB
-        measurement.clear();
-        measurement.setName("environment");
-#else
         InfluxData measurement("environment");
-#endif
-
-        measurement.addTag("location", SENSOR_LOCATION);
-        measurement.addTag("location-id", SENSOR_ID);
-        measurement.addTag("placement", "2");
-        measurement.addTag("sensor", "bme280");
-
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress().c_str());
-#endif
+        addTagsSensor(measurement, F("bme280"), F("2"));
 
         measurement.addValue("temperature", bme2_temp());
         measurement.addValue("pressure", bme2_pressure());
@@ -151,20 +144,8 @@ void writeDatabase() {
 #endif // ENABLE_BME280
 
     if (found_sht) {
-#ifndef USE_INFLUXDB_LIB
-        measurement.clear();
-        measurement.setName("environment");
-#else
         InfluxData measurement("environment");
-#endif
-
-        measurement.addTag("location", SENSOR_LOCATION);
-        measurement.addTag("location-id", SENSOR_ID);
-        measurement.addTag("sensor", "sht21");
-
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress().c_str());
-#endif
+        addTagsSensor(measurement, F("sht21"), F("1"));
 
         measurement.addValue("temperature", sht_temp());
         measurement.addValue("humidity", sht_humid());
@@ -177,24 +158,11 @@ void writeDatabase() {
 #ifdef ENABLE_CCS811
 
     if (found_ccs1) {
-#ifndef USE_INFLUXDB_LIB
-        measurement.clear();
-        measurement.setName("environment");
-#else
         InfluxData measurement("environment");
-#endif
-
-        measurement.addTag("location", SENSOR_LOCATION);
-        measurement.addTag("location-id", SENSOR_ID);
-        measurement.addTag("placement", "1");
-        measurement.addTag("sensor", "ccs811");
+        addTagsSensor(measurement, F("ccs811"), F("1"));
 
         String err(ccs1_error_code);
         measurement.addTag("error", err);
-
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress().c_str());
-#endif
 
         measurement.addValue("eco2", ccs1_eco2());
         measurement.addValue("tvoc", ccs1_tvoc());
@@ -205,24 +173,11 @@ void writeDatabase() {
     }
 
     if (found_ccs2) {
-#ifndef USE_INFLUXDB_LIB
-        measurement.clear();
-        measurement.setName("environment");
-#else
         InfluxData measurement("environment");
-#endif
-
-        measurement.addTag("location", SENSOR_LOCATION);
-        measurement.addTag("location-id", SENSOR_ID);
-        measurement.addTag("placement", "2");
-        measurement.addTag("sensor", "ccs811");
+        addTagsSensor(measurement, F("ccs811"), F("2"));
 
         String err(ccs2_error_code);
         measurement.addTag("error", err);
-
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress().c_str());
-#endif
 
         measurement.addValue("eco2", ccs2_eco2());
         measurement.addValue("tvoc", ccs2_tvoc());
@@ -238,21 +193,9 @@ void writeDatabase() {
     for (int i = 0; i < moisture_count(); i++) {
         int moisture = moisture_read(i);
         if (moisture < moisture_max()) {
-#ifndef USE_INFLUXDB_LIB
-            measurement.clear();
-            measurement.setName("moisture");
-#else
-            InfluxData measurement("moisture");
-#endif
-
-            measurement.addTag("location", SENSOR_LOCATION);
-            measurement.addTag("location-id", SENSOR_ID);
             String sensor(i + 1, DEC);
-            measurement.addTag("sensor", sensor);
-
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-            measurement.addTag("device", WiFi.macAddress().c_str());
-#endif
+            InfluxData measurement("moisture");
+            addTagsSensor(measurement, sensor, sensor);
 
             measurement.addValue("value", moisture);
             measurement.addValue("maximum", moisture_max());
@@ -268,17 +211,14 @@ void writeDatabase() {
 #ifdef FEATURE_RELAIS
     for (int i = 0; i < relais_count(); i++) {
         InfluxData measurement("relais");
-        measurement.addTag("location", SENSOR_LOCATION);
-        measurement.addTag("location-id", SENSOR_ID);
-        measurement.addTag("id", String(i));
-        measurement.addTag("name", relais_name(i));
-
-#if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
-        measurement.addTag("device", WiFi.macAddress().c_str());
-#endif
+        addTagsRelais(measurement, String(i), relais_name(i));
 
         measurement.addValue("state", relais_get(i));
+
+        debug.print(F("Writing relais "));
+        debug.println(i);
         writeMeasurement(measurement);
+        debug.println(F("Done!"));
     }
 #endif // FEATURE_RELAIS
 }

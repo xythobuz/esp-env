@@ -390,8 +390,8 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F("</body>");
 
 #ifdef ENABLE_WEBSOCKETS
-    message += F("<script type='text/javascript'>\n");
-    message += F("var socket = new WebSocket('ws://' + window.location.hostname + ':81');\n");
+    message += F("<script type='text/javascript'>");
+    message += F("var socket = new WebSocket('ws://' + window.location.hostname + ':81');");
     message += F("socket.onmessage = function(e) {");
     message += F(    "var log = document.getElementById('logbuf');");
     message += F(    "var div = document.getElementsByClassName('log')[0];");
@@ -400,10 +400,10 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F(        "log.innerHTML = log.innerHTML.substring(1024 * 1024);");
     message += F(    "}");
     message += F(    "div.scrollTop = div.scrollHeight;");
-    message += F("};\n");
-    message += F("var hist = document.getElementsByClassName('log')[0];\n");
-    message += F("hist.scrollTop = hist.scrollHeight;\n");
-    message += F("</script>\n");
+    message += F("};");
+    message += F("var hist = document.getElementsByClassName('log')[0];");
+    message += F("hist.scrollTop = hist.scrollHeight;");
+    message += F("</script>");
 #endif // ENABLE_WEBSOCKETS
 
     message += F("</html>");

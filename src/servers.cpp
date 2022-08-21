@@ -229,8 +229,4 @@ void runServers() {
 #endif // ENABLE_WEBSOCKETS
 #endif
     }
-    
-    runSensors();
-    runMQTT();
-    runInflux();
 }

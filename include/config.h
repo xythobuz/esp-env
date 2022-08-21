@@ -58,7 +58,7 @@
 #define SENSOR_ID SENSOR_LOCATION
 #elif defined(SENSOR_LOCATION_LIVINGROOM_WORKSPACE)
 #define SENSOR_LOCATION "livingroom"
-#define SENSOR_ID "livingroom-workspace"
+#define SENSOR_ID "livingroom-ws"
 #elif defined(SENSOR_LOCATION_LIVINGROOM_TV)
 #define SENSOR_LOCATION "livingroom"
 #define SENSOR_ID "livingroom-tv"

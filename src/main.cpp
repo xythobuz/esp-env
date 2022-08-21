@@ -68,12 +68,17 @@ void setup() {
 
     config = mem_read();
 
+#ifdef FEATURE_RELAIS
     debug.println(F("Relais"));
     relais_init();
-    
+#endif // FEATURE_RELAIS
+
+#ifdef FEATURE_MOISTURE
     debug.println(F("Moisture"));
     moisture_init();
+#endif // FEATURE_MOISTURE
 
+    debug.println(F("Sensors"));
     initSensors();
 
     // Build hostname string
@@ -123,6 +128,7 @@ void setup() {
     // Connect to WiFi AP
     debug.print(F("Connecting WiFi"));
     WiFi.mode(WIFI_STA);
+    WiFi.setHostname(hostname.c_str());
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED) {
         delay(LED_CONNECT_BLINK_INTERVAL);

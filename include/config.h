@@ -40,7 +40,7 @@
 #define INFLUXDB_HOST "INFLUX_IP_HERE"
 #define INFLUXDB_PORT 8086
 #define INFLUXDB_DATABASE "roomsensorsdiy"
-#define INFLUX_MAX_ERRORS_RESET 10
+//#define INFLUX_MAX_ERRORS_RESET 10
 
 // all given in milliseconds
 #define SERVER_HANDLE_INTERVAL 10

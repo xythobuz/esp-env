@@ -217,8 +217,10 @@ void initSensors() {
     // Init I2C and try to connect to sensors
 #if defined(ARDUINO_ARCH_ESP8266)
 
+#if defined(ENABLE_BME280) || defined(ENABLE_CCS811)
     debug.println(F("Wire2"));
     Wire2.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+#endif
 
 #ifdef ENABLE_BME280
     debug.println(F("BME"));
@@ -234,7 +236,7 @@ void initSensors() {
 
 #elif defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_AVR)
 
-#if defined(ARDUINO_ARCH_ESP32)
+#if defined(ARDUINO_ARCH_ESP32) && (defined(ENABLE_BME280) || defined(ENABLE_CCS811))
     debug.println(F("Wire"));
     Wire.begin();
 #endif

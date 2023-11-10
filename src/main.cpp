@@ -32,6 +32,7 @@
 #include "mqtt.h"
 #include "html.h"
 #include "servers.h"
+#include "ui.h"
 
 unsigned long last_led_blink_time = 0;
 
@@ -65,6 +66,11 @@ void setup() {
         digitalWrite(BUILTIN_LED_PIN, HIGH); // LED off
         delay(LED_INIT_BLINK_INTERVAL);
     }
+
+#ifdef FEATURE_UI
+    debug.println(F("UI"));
+    ui_init();
+#endif // FEATURE_UI
 
     config = mem_read();
 
@@ -123,7 +129,11 @@ void setup() {
         esp_deep_sleep_start();
         delay(100);
         ESP.restart();
+#ifdef NEW_ESP32_LIB
+    }, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
+#else
     }, WiFiEvent_t::SYSTEM_EVENT_STA_DISCONNECTED);
+#endif
 
     // Connect to WiFi AP
     debug.print(F("Connecting WiFi"));
@@ -173,14 +183,17 @@ void setup() {
 }
 
 void loop() {
-    unsigned long time = millis();
-
     runServers();
     runSensors();
     runMQTT();
     runInflux();
 
+#ifdef FEATURE_UI
+    ui_run();
+#endif
+
     // blink heartbeat LED
+    unsigned long time = millis();
     if ((time - last_led_blink_time) >= LED_BLINK_INTERVAL) {
         last_led_blink_time = time;
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));

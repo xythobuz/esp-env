@@ -1,5 +1,5 @@
 /*
- * mqtt.h
+ * ui.h
  *
  * ESP8266 / ESP32 Environmental Sensor
  *
@@ -11,14 +11,10 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef __MQTT_H__
-#define __MQTT_H__
+#ifndef __UI_H__
+#define __UI_H__
 
-void initMQTT();
-void runMQTT();
+void ui_init(void);
+void ui_run(void);
 
-#ifdef FEATURE_UI
-void writeMQTTtopic(const char *topic, const char *data, bool retain = true);
-#endif // FEATURE_UI
-
-#endif // __MQTT_H__
+#endif // __UI_H__

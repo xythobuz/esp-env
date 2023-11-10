@@ -170,6 +170,10 @@ static void mqttReconnect() {
             mqtt.subscribe(topic.c_str());
         }
 #endif // FEATURE_RELAIS
+
+#ifdef FEATURE_UI
+        mqtt.subscribe("livingroom/light_kitchen");
+#endif // FEATURE_UI
     }
 }
 
@@ -193,6 +197,12 @@ void runMQTT() {
 
     mqtt.loop();
 }
+
+#ifdef FEATURE_UI
+void writeMQTTtopic(const char *topic, const char *data, bool retain) {
+    mqtt.publish(topic, data, retain);
+}
+#endif
 
 #else
 

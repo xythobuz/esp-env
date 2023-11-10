@@ -36,6 +36,18 @@
 #define LEDC_TIMER_12_BIT 12
 #define LEDC_BASE_FREQ 5000
 
+#define TOUCH_LEFT 180
+#define TOUCH_RIGHT 3750
+
+#define TOUCH_TOP 230
+#define TOUCH_BOTTOM 3800
+
+TS_Point touchToScreen(TS_Point p) {
+    p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
+    p.y = map(p.y, TOUCH_TOP, TOUCH_BOTTOM, 0, LCD_HEIGHT);
+    return p;
+}
+
 void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
     uint32_t duty = (4095 / valueMax) * min(value, valueMax);
     ledcWrite(channel, duty);
@@ -69,6 +81,10 @@ void ui_init(void) {
 
 void printTouchToDisplay(TS_Point p) {
     tft.fillScreen(TFT_BLACK);
+
+    tft.fillRect(0, 0, 100, LCD_HEIGHT, TFT_RED);
+    tft.fillRect(LCD_WIDTH - 100, 0, 100, LCD_HEIGHT, TFT_GREEN);
+
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
 
     int x = LCD_WIDTH / 2;
@@ -89,16 +105,18 @@ void printTouchToDisplay(TS_Point p) {
 
 void ui_run(void) {
     if (ts.tirqTouched() && ts.touched()) {
-        TS_Point p = ts.getPoint();
+        TS_Point p = touchToScreen(ts.getPoint());
         printTouchToDisplay(p);
 
-        if (p.x < 1000) {
+        if (p.x < 100) {
             writeMQTTtopic("livingroom/light_kitchen", "off");
-        } else if (p.x > 3000) {
+            tft.drawCentreString("Off", LCD_WIDTH / 2, 100 + 4 * 16, 2);
+        } else if (p.x > (LCD_WIDTH - 100)) {
             writeMQTTtopic("livingroom/light_kitchen", "on");
+            tft.drawCentreString("On", LCD_WIDTH / 2, 100 + 4 * 16, 2);
         }
 
-        delay(1000);
+        delay(100);
     }
 }
 

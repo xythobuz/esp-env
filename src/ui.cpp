@@ -42,21 +42,47 @@
 #define TOUCH_TOP 230
 #define TOUCH_BOTTOM 3800
 
-TS_Point touchToScreen(TS_Point p) {
+static SPIClass mySpi = SPIClass(HSPI);
+static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
+
+static TFT_eSPI tft = TFT_eSPI();
+
+static TS_Point touchToScreen(TS_Point p) {
     p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
     p.y = map(p.y, TOUCH_TOP, TOUCH_BOTTOM, 0, LCD_HEIGHT);
     return p;
 }
 
-void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
+static void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
     uint32_t duty = (4095 / valueMax) * min(value, valueMax);
     ledcWrite(channel, duty);
 }
 
-SPIClass mySpi = SPIClass(HSPI);
-XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
+#define BTN_W 120
+#define BTN_H 60
+#define BTN_GAP 20
 
-TFT_eSPI tft = TFT_eSPI();
+#define BTNS_OFF_X ((LCD_WIDTH - (2 * BTN_W) - (1 * BTN_GAP)) / 2)
+#define BTNS_OFF_Y ((LCD_HEIGHT - (3 * BTN_H) - (2 * BTN_GAP)) / 2)
+
+static void draw_button(const char *name, uint32_t x, uint32_t y, bool state) {
+    tft.fillRect(x - BTN_W / 2, y - BTN_H / 2, BTN_W, BTN_H, state ? TFT_GREEN : TFT_RED);
+
+    tft.setTextDatum(MC_DATUM); // middle center
+    tft.drawString(name, x, y, 2);
+}
+
+static bool lc, lw, lk, sa, lt, lp;
+
+static void draw_livingroom(void) {
+    draw_button("Lights Corner", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2, lc);
+    draw_button("Lights Workspace", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP, lw);
+    draw_button("Lights Kitchen", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, lk);
+
+    draw_button("Sound Amp.", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2, sa);
+    draw_button("Lights TV", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP, lt);
+    draw_button("Lights PC", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, lp);
+}
 
 void ui_init(void) {
     mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
@@ -72,50 +98,36 @@ void ui_init(void) {
 
     tft.fillScreen(TFT_BLACK);
 
-    int x = LCD_WIDTH / 2;
-    int y = LCD_HEIGHT / 2;
-    int fontSize = 2;
-    tft.drawCentreString("Initializing ESP-ENV", x, y - 16, fontSize);
-    tft.drawCentreString("xythobuz.de", x, y + 16, fontSize);
+    tft.setTextDatum(MC_DATUM); // middle center
+    tft.drawString("Initializing ESP-ENV", LCD_WIDTH / 2, LCD_HEIGHT / 2 - 16, 2);
+    tft.drawString("xythobuz.de", LCD_WIDTH / 2, LCD_HEIGHT / 2 + 16, 2);
 }
 
-void printTouchToDisplay(TS_Point p) {
+void ui_draw_menu(void) {
     tft.fillScreen(TFT_BLACK);
-
-    tft.fillRect(0, 0, 100, LCD_HEIGHT, TFT_RED);
-    tft.fillRect(LCD_WIDTH - 100, 0, 100, LCD_HEIGHT, TFT_GREEN);
-
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-
-    int x = LCD_WIDTH / 2;
-    int y = 100;
-    int fontSize = 2;
-
-    String temp = "Pressure = " + String(p.z);
-    tft.drawCentreString(temp, x, y, fontSize);
-
-    y += 16;
-    temp = "X = " + String(p.x);
-    tft.drawCentreString(temp, x, y, fontSize);
-
-    y += 16;
-    temp = "Y = " + String(p.y);
-    tft.drawCentreString(temp, x, y, fontSize);
+    draw_livingroom();
 }
 
 void ui_run(void) {
     if (ts.tirqTouched() && ts.touched()) {
         TS_Point p = touchToScreen(ts.getPoint());
-        printTouchToDisplay(p);
 
-        if (p.x < 100) {
-            writeMQTTtopic("livingroom/light_kitchen", "off");
-            tft.drawCentreString("Off", LCD_WIDTH / 2, 100 + 4 * 16, 2);
-        } else if (p.x > (LCD_WIDTH - 100)) {
-            writeMQTTtopic("livingroom/light_kitchen", "on");
-            tft.drawCentreString("On", LCD_WIDTH / 2, 100 + 4 * 16, 2);
+        if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
+            lc = !lc;
+        } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
+            lw = !lw;
+        } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
+            lk = !lk;
+        } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
+            sa = !sa;
+        } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
+            lt = !lt;
+        } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
+            lp = !lp;
         }
 
+        // TODO
+        draw_livingroom();
         delay(100);
     }
 }

@@ -54,7 +54,7 @@ void onDisconnected(const WiFiEventStationModeDisconnected& event) {
 
 void setup() {
     pinMode(BUILTIN_LED_PIN, OUTPUT);
-    
+
     Serial.begin(115200);
 
     debug.println(F("Initializing..."));
@@ -110,13 +110,13 @@ void setup() {
 
     // Set hostname workaround
     WiFi.hostname(hostname);
-    
+
 #elif defined(ARDUINO_ARCH_ESP32)
 
     // Set hostname workaround
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     WiFi.setHostname(hostname.c_str());
-    
+
     WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
         /*
          * was initially: workaround for WiFi connecting only every 2nd reset
@@ -146,7 +146,7 @@ void setup() {
         debug.print(F("."));
     }
     debug.println(F("\nWiFi connected!"));
-    
+
     // Set hostname workaround
     WiFi.setHostname(hostname.c_str());
 
@@ -180,6 +180,11 @@ void setup() {
     initServers(hostname);
 
     debug.println(F("Ready! Starting..."));
+
+#ifdef FEATURE_UI
+    debug.println(F("UI Go"));
+    ui_draw_menu();
+#endif // FEATURE_UI
 }
 
 void loop() {

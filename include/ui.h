@@ -15,6 +15,7 @@
 #define __UI_H__
 
 void ui_init(void);
+void ui_draw_menu(void);
 void ui_run(void);
 
 #endif // __UI_H__

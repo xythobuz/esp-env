@@ -98,7 +98,7 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         ps += c;
     }
 
-    debug.print(F("MQTT Rx @ \""));
+    debug.print(F("MQTT &lt;Rx  @ \""));
     debug.print(ts);
     debug.print(F("\" = \""));
     debug.print(ps);
@@ -241,24 +241,41 @@ void runMQTT() {
 #ifdef FEATURE_UI
 static struct ui_status prev_status = ui_status;
 
+static void mqttPublish(const char* ts, const char *ps, bool retained) {
+    debug.print(F("MQTT  Tx&gt; @ \""));
+    debug.print(ts);
+    debug.print(F("\" = \""));
+    debug.print(ps);
+    debug.println(F("\""));
+    mqtt.publish(ts, ps, retained);
+}
+
 void writeMQTT_UI(void) {
     struct ui_status curr_status = ui_status;
+
     if (curr_status.light_amp != prev_status.light_amp) {
-        mqtt.publish("livingroom/light_amp", curr_status.light_amp ? "on" : "off", true);
-    } else if (curr_status.light_bench != prev_status.light_bench) {
-        mqtt.publish("livingroom/light_bench", curr_status.light_bench ? "on" : "off", true);
-    } else if (curr_status.light_box != prev_status.light_box) {
-        mqtt.publish("livingroom/light_box", curr_status.light_box ? "on" : "off", true);
-    } else if (curr_status.light_corner != prev_status.light_corner) {
-        mqtt.publish("livingroom/light_corner/cmnd/POWER", curr_status.light_corner ? "on" : "off", true);
-    } else if (curr_status.light_kitchen != prev_status.light_kitchen) {
-        mqtt.publish("livingroom/light_kitchen", curr_status.light_kitchen ? "on" : "off", true);
-    } else if (curr_status.light_pc != prev_status.light_pc) {
-        mqtt.publish("livingroom/light_pc", curr_status.light_pc ? "on" : "off", true);
-    } else if (curr_status.light_workspace != prev_status.light_workspace) {
-        mqtt.publish("livingroom/workbench/cmnd/POWER", curr_status.light_workspace ? "on" : "off", true);
-    } else if (curr_status.sound_amplifier != prev_status.sound_amplifier) {
-        mqtt.publish("livingroom/amp/cmnd/POWER", curr_status.sound_amplifier ? "on" : "off", true);
+        mqttPublish("livingroom/light_amp", curr_status.light_amp ? "on" : "off", true);
+    }
+    if (curr_status.light_bench != prev_status.light_bench) {
+        mqttPublish("livingroom/light_bench", curr_status.light_bench ? "on" : "off", true);
+    }
+    if (curr_status.light_box != prev_status.light_box) {
+        mqttPublish("livingroom/light_box", curr_status.light_box ? "on" : "off", true);
+    }
+    if (curr_status.light_corner != prev_status.light_corner) {
+        mqttPublish("livingroom/light_corner/cmnd/POWER", curr_status.light_corner ? "on" : "off", true);
+    }
+    if (curr_status.light_kitchen != prev_status.light_kitchen) {
+        mqttPublish("livingroom/light_kitchen", curr_status.light_kitchen ? "on" : "off", true);
+    }
+    if (curr_status.light_pc != prev_status.light_pc) {
+        mqttPublish("livingroom/light_pc", curr_status.light_pc ? "on" : "off", true);
+    }
+    if (curr_status.light_workspace != prev_status.light_workspace) {
+        mqttPublish("livingroom/workbench/cmnd/POWER", curr_status.light_workspace ? "on" : "off", true);
+    }
+    if (curr_status.sound_amplifier != prev_status.sound_amplifier) {
+        mqttPublish("livingroom/amp/cmnd/POWER", curr_status.sound_amplifier ? "on" : "off", true);
     }
 
     prev_status = curr_status;

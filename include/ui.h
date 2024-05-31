@@ -33,10 +33,10 @@ enum ui_state {
     UI_WIFI_CONNECTING,
     UI_WIFI_CONNECTED,
     UI_READY,
+    UI_UPDATE,
 };
 
 void ui_init(void);
-void ui_draw_menu(void);
 void ui_run(void);
 
 void ui_progress(enum ui_state state);

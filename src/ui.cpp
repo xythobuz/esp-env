@@ -86,21 +86,61 @@ static void draw_button(const char *name, uint32_t x, uint32_t y, uint32_t color
 }
 
 static void draw_livingroom1(void) {
-    draw_button("Lights Corner", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2, ui_status.light_corner ? TFT_GREEN : TFT_RED);
-    draw_button("Lights Workspace", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP, ui_status.light_workspace ? TFT_GREEN : TFT_RED);
-    draw_button("Lights Kitchen", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
+    // 1
+    draw_button("Lights Corner",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.light_corner ? TFT_GREEN : TFT_RED);
 
-    draw_button("Sound Amp.", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2, ui_status.sound_amplifier ? TFT_GREEN : TFT_RED);
-    draw_button("All Lights Off", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP, TFT_RED);
+    // 2
+    draw_button("Lights Workspace",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.light_workspace ? TFT_GREEN : TFT_RED);
+
+    // 3
+    draw_button("Lights Kitchen",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
+
+    // 4
+    draw_button("Sound Amp.",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.sound_amplifier ? TFT_GREEN : TFT_RED);
+
+    // 5
+    draw_button("All Lights Off",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                TFT_MAGENTA);
 }
 
 static void draw_livingroom2(void) {
-    draw_button("Lights PC", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2, ui_status.light_corner ? TFT_GREEN : TFT_RED);
-    draw_button("Lights Bench", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP, ui_status.light_workspace ? TFT_GREEN : TFT_RED);
-    //draw_button("Lights Amp.", BTNS_OFF_X + BTN_W / 2, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
+    // 1
+    draw_button("Lights PC",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.light_pc ? TFT_GREEN : TFT_RED);
 
-    draw_button("Lights Amp.", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2, ui_status.sound_amplifier ? TFT_GREEN : TFT_RED);
-    draw_button("Lights Box", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP, TFT_RED); // TODO both
+    // 2
+    draw_button("Lights Bench",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.light_bench ? TFT_GREEN : TFT_RED);
+
+    // 4
+    draw_button("Lights Amp.",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.light_amp ? TFT_GREEN : TFT_RED);
+
+    // 5
+    draw_button("Lights Box",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.light_box ? TFT_GREEN : TFT_RED);
 }
 
 void ui_init(void) {
@@ -116,6 +156,30 @@ void ui_init(void) {
     ledcAnalogWrite(LEDC_CHANNEL_0, 255);
 
     ui_progress(UI_INIT);
+}
+
+static void ui_draw_menu(void) {
+    switch (ui_page) {
+        case UI_START:
+            tft.fillScreen(TFT_BLACK);
+            ui_page = UI_LIVINGROOM1;
+            // fall-through
+
+        case UI_LIVINGROOM1:
+            draw_livingroom1();
+            break;
+
+        case UI_LIVINGROOM2:
+            draw_livingroom2();
+            break;
+
+        default:
+            ui_page = UI_START;
+            ui_draw_menu();
+            return;
+    }
+
+    draw_button("Next...", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, TFT_CYAN);
 }
 
 void ui_progress(enum ui_state state) {
@@ -153,33 +217,14 @@ void ui_progress(enum ui_state state) {
         } break;
 
         case UI_READY: {
-            tft.fillScreen(TFT_BLACK);
-            tft.setTextDatum(MC_DATUM); // middle center
-            tft.drawString("Ready", x, y, fontSize);
+            ui_page = UI_START;
+            ui_draw_menu();
+        } break;
+
+        case UI_UPDATE: {
+            ui_draw_menu();
         } break;
     }
-}
-
-void ui_draw_menu(void) {
-    switch (ui_page) {
-        case UI_START:
-            tft.fillScreen(TFT_BLACK);
-            ui_page = UI_LIVINGROOM1;
-            // fall-through
-
-        case UI_LIVINGROOM1:
-            draw_livingroom1();
-            break;
-
-        case UI_LIVINGROOM2:
-            draw_livingroom2();
-            break;
-
-        default:
-            ui_page = UI_START;
-    }
-
-    draw_button("Next...", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, TFT_MAGENTA);
 }
 
 void ui_run(void) {
@@ -187,15 +232,49 @@ void ui_run(void) {
         TS_Point p = touchToScreen(ts.getPoint());
 
         if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
-            INVERT_BOOL(ui_status.light_corner);
+            // 1
+            if (ui_page == UI_LIVINGROOM1) {
+                INVERT_BOOL(ui_status.light_corner);
+            } else if (ui_page == UI_LIVINGROOM2) {
+                INVERT_BOOL(ui_status.light_pc);
+            }
+            writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
-            INVERT_BOOL(ui_status.light_workspace);
+            // 2
+            if (ui_page == UI_LIVINGROOM1) {
+                INVERT_BOOL(ui_status.light_workspace);
+            } else if (ui_page == UI_LIVINGROOM2) {
+                INVERT_BOOL(ui_status.light_bench);
+            }
+            writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
-            INVERT_BOOL(ui_status.light_kitchen);
+            // 3
+            if (ui_page == UI_LIVINGROOM1) {
+                INVERT_BOOL(ui_status.light_kitchen);
+            }
+            writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
-            INVERT_BOOL(ui_status.sound_amplifier);
+            // 4
+            if (ui_page == UI_LIVINGROOM1) {
+                INVERT_BOOL(ui_status.sound_amplifier);
+            } else if (ui_page == UI_LIVINGROOM2) {
+                INVERT_BOOL(ui_status.light_amp);
+            }
+            writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
-            // TODO should act on both TV lights (box and amp)
+            // 5
+            if (ui_page == UI_LIVINGROOM1) {
+                ui_status.light_amp = false;
+                ui_status.light_kitchen = false;
+                ui_status.light_bench= false;
+                ui_status.light_workspace = false;
+                ui_status.light_pc = false;
+                ui_status.light_corner = false;
+                ui_status.light_box = false;
+            } else if (ui_page == UI_LIVINGROOM2) {
+                INVERT_BOOL(ui_status.light_box);
+            }
+            writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
             // switch to next page
             ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);

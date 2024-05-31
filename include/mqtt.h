@@ -18,7 +18,7 @@ void initMQTT();
 void runMQTT();
 
 #ifdef FEATURE_UI
-void writeMQTTtopic(const char *topic, const char *data, bool retain = true);
+void writeMQTT_UI(void);
 #endif // FEATURE_UI
 
 #endif // __MQTT_H__

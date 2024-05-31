@@ -14,6 +14,19 @@
 #ifndef __UI_H__
 #define __UI_H__
 
+struct ui_status {
+    bool light_corner;
+    bool light_workspace;
+    bool light_kitchen;
+    bool sound_amplifier;
+    bool light_bench;
+    bool light_pc;
+    bool light_amp;
+    bool light_box;
+};
+
+extern struct ui_status ui_status;
+
 void ui_init(void);
 void ui_draw_menu(void);
 void ui_run(void);

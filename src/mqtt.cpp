@@ -18,6 +18,7 @@
 #include "sensors.h"
 #include "relais.h"
 #include "influx.h"
+#include "ui.h"
 #include "mqtt.h"
 
 #ifdef ENABLE_MQTT
@@ -103,8 +104,18 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
     debug.print(ps);
     debug.println(F("\""));
 
-#ifdef FEATURE_RELAIS
+#if defined(FEATURE_RELAIS) || defined(FEATURE_UI)
     int state = 0;
+    if (ps.indexOf("on") != -1) {
+        state = 1;
+    } else if (ps.indexOf("off") != -1) {
+        state = 0;
+    } else {
+        return;
+    }
+#endif
+
+#ifdef FEATURE_RELAIS
     int id = -1;
 
     String our_topic(SENSOR_LOCATION);
@@ -130,14 +141,6 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         return;
     }
 
-    if (ps.indexOf("on") != -1) {
-        state = 1;
-    } else if (ps.indexOf("off") != -1) {
-        state = 0;
-    } else {
-        return;
-    }
-
     if ((id >= 0) && (id < relais_count())) {
         debug.print(F("Turning "));
         debug.print(state ? "on" : "off");
@@ -149,6 +152,27 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         writeDatabase();
     }
 #endif // FEATURE_RELAIS
+
+#ifdef FEATURE_UI
+    // store new topic values for display
+    if (ts == "livingroom/light_kitchen") {
+        ui_status.light_kitchen = state ? true : false;
+    } else if (ts == "livingroom/light_pc") {
+        ui_status.light_pc = state ? true : false;
+    } else if (ts == "livingroom/light_bench") {
+        ui_status.light_bench = state ? true : false;
+    } else if (ts == "livingroom/light_amp") {
+        ui_status.light_amp = state ? true : false;
+    } else if (ts == "livingroom/light_box") {
+        ui_status.light_box = state ? true : false;
+    } else if (ts == "livingroom/TODO") {
+        ui_status.light_corner = state ? true: false;
+    } else if (ts == "livingroom/TODO") {
+        ui_status.light_workspace = state ? true : false;
+    } else if (ts == "livingroom/TODO") {
+        ui_status.sound_amplifier = state ? true : false;
+    }
+#endif // FEATURE_UI
 }
 
 static void mqttReconnect() {
@@ -172,7 +196,13 @@ static void mqttReconnect() {
 #endif // FEATURE_RELAIS
 
 #ifdef FEATURE_UI
+        // TODO need to list all topics we're interested in?
         mqtt.subscribe("livingroom/light_kitchen");
+        mqtt.subscribe("livingroom/light_pc");
+        mqtt.subscribe("livingroom/light_bench");
+        mqtt.subscribe("livingroom/light_amp");
+        mqtt.subscribe("livingroom/light_box");
+        // TODO corner lights, workspace, amp
 #endif // FEATURE_UI
     }
 }

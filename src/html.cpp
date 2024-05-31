@@ -91,6 +91,8 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F(        "background-color: black;");
     message += F(        "color: white;");
     message += F(    "}");
+    message += F(    "a:link { color: yellow; }");
+    message += F(    "a:visited { color: orange; }");
     message += F(    ".log {\n");
     message += F(        "border-color: white;");
     message += F(    "}");
@@ -427,6 +429,8 @@ void handleReset() {
     message += F(        "background-color: black;");
     message += F(        "color: white;");
     message += F(    "}");
+    message += F(    "a:link { color: yellow; }");
+    message += F(    "a:visited { color: orange; }");
     message += F("}");
     message += F("</style>");
     message += F("</head><body>");

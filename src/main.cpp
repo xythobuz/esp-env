@@ -95,6 +95,9 @@ void setup() {
 
     // Connect to WiFi AP
     debug.print(F("Connecting WiFi"));
+#ifdef FEATURE_UI
+    ui_progress(UI_WIFI_CONNECT);
+#endif // FEATURE_UI
     WiFi.hostname(hostname);
     WiFi.mode(WIFI_STA);
     WiFi.hostname(hostname);
@@ -103,8 +106,14 @@ void setup() {
         delay(LED_CONNECT_BLINK_INTERVAL);
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
         debug.print(F("."));
+#ifdef FEATURE_UI
+        ui_progress(UI_WIFI_CONNECTING);
+#endif // FEATURE_UI
     }
     debug.println(F("\nWiFi connected!"));
+#ifdef FEATURE_UI
+    ui_progress(UI_WIFI_CONNECTED);
+#endif // FEATURE_UI
 
     disconnectHandler = WiFi.onStationModeDisconnected(onDisconnected);
 
@@ -137,6 +146,9 @@ void setup() {
 
     // Connect to WiFi AP
     debug.print(F("Connecting WiFi"));
+#ifdef FEATURE_UI
+    ui_progress(UI_WIFI_CONNECT);
+#endif // FEATURE_UI
     WiFi.mode(WIFI_STA);
     WiFi.setHostname(hostname.c_str());
     WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -144,8 +156,14 @@ void setup() {
         delay(LED_CONNECT_BLINK_INTERVAL);
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
         debug.print(F("."));
+#ifdef FEATURE_UI
+        ui_progress(UI_WIFI_CONNECTING);
+#endif // FEATURE_UI
     }
     debug.println(F("\nWiFi connected!"));
+#ifdef FEATURE_UI
+    ui_progress(UI_WIFI_CONNECTED);
+#endif // FEATURE_UI
 
     // Set hostname workaround
     WiFi.setHostname(hostname.c_str());
@@ -157,13 +175,22 @@ void setup() {
     WiFi.init(&Serial1);
 
     debug.print(F("Connecting WiFi"));
+#ifdef FEATURE_UI
+    ui_progress(UI_WIFI_CONNECT);
+#endif // FEATURE_UI
     WiFi.begin(WIFI_SSID, WIFI_PASS);
     while (WiFi.status() != WL_CONNECTED) {
         delay(LED_CONNECT_BLINK_INTERVAL);
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
         debug.print(F("."));
+#ifdef FEATURE_UI
+        ui_progress(UI_WIFI_CONNECTING);
+#endif // FEATURE_UI
     }
     debug.println(F("\nWiFi connected!"));
+#ifdef FEATURE_UI
+    ui_progress(UI_WIFI_CONNECTED);
+#endif // FEATURE_UI
 
 #endif
 
@@ -183,7 +210,7 @@ void setup() {
 
 #ifdef FEATURE_UI
     debug.println(F("UI Go"));
-    ui_draw_menu();
+    ui_progress(UI_READY);
 #endif // FEATURE_UI
 }
 

@@ -27,8 +27,18 @@ struct ui_status {
 
 extern struct ui_status ui_status;
 
+enum ui_state {
+    UI_INIT = 0,
+    UI_WIFI_CONNECT,
+    UI_WIFI_CONNECTING,
+    UI_WIFI_CONNECTED,
+    UI_READY,
+};
+
 void ui_init(void);
 void ui_draw_menu(void);
 void ui_run(void);
+
+void ui_progress(enum ui_state state);
 
 #endif // __UI_H__

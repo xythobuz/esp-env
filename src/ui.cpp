@@ -57,15 +57,15 @@ static TFT_eSPI tft = TFT_eSPI();
 
 struct ui_status ui_status = {0};
 
-enum ui_states {
-    UI_INIT = 0,
+enum ui_pages {
+    UI_START = 0,
     UI_LIVINGROOM1,
     UI_LIVINGROOM2,
 
-    UI_NUM_STATES
+    UI_NUM_PAGES
 };
 
-static enum ui_states ui_state = UI_INIT;
+static enum ui_pages ui_page = UI_START;
 
 static TS_Point touchToScreen(TS_Point p) {
     p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
@@ -115,20 +115,56 @@ void ui_init(void) {
     ledcAttachPin(TFT_BL, LEDC_CHANNEL_0);
     ledcAnalogWrite(LEDC_CHANNEL_0, 255);
 
-    tft.fillScreen(TFT_BLACK);
+    ui_progress(UI_INIT);
+}
 
-    tft.setTextDatum(MC_DATUM); // middle center
-    tft.drawString("Initializing ESP-ENV", LCD_WIDTH / 2, LCD_HEIGHT / 2 - 16, 2);
-    tft.drawString("xythobuz.de", LCD_WIDTH / 2, LCD_HEIGHT / 2 + 16, 2);
+void ui_progress(enum ui_state state) {
+    int x = LCD_WIDTH / 2;
+    int y = LCD_HEIGHT / 2;
+    int fontSize = 2;
 
-    ui_state = UI_INIT;
+    switch (state) {
+        case UI_INIT: {
+            tft.fillScreen(TFT_BLACK);
+            tft.setTextDatum(MC_DATUM); // middle center
+            tft.drawString("Initializing ESP-ENV", x, y - 32, fontSize);
+            tft.drawString("xythobuz.de", x, y, fontSize);
+        } break;
+
+        case UI_WIFI_CONNECT: {
+            tft.setTextDatum(MC_DATUM); // middle center
+            tft.drawString("Connecting to '" WIFI_SSID "'", x, y + 32, fontSize);
+        } break;
+
+        case UI_WIFI_CONNECTING: {
+            static int n = 0;
+            const char anim[] = { '\\', '|', '/', '-' };
+            n++;
+            if (n >= sizeof(anim)) {
+                n = 0;
+            }
+            char s[2] = { anim[n], '\0' };
+            tft.drawCentreString(s, x, y + 64, fontSize);
+        } break;
+
+        case UI_WIFI_CONNECTED: {
+            tft.setTextDatum(MC_DATUM); // middle center
+            tft.drawString("Connected!", x, y + 64, fontSize);
+        } break;
+
+        case UI_READY: {
+            tft.fillScreen(TFT_BLACK);
+            tft.setTextDatum(MC_DATUM); // middle center
+            tft.drawString("Ready", x, y, fontSize);
+        } break;
+    }
 }
 
 void ui_draw_menu(void) {
-    switch (ui_state) {
-        case UI_INIT:
+    switch (ui_page) {
+        case UI_START:
             tft.fillScreen(TFT_BLACK);
-            ui_state = UI_LIVINGROOM1;
+            ui_page = UI_LIVINGROOM1;
             // fall-through
 
         case UI_LIVINGROOM1:
@@ -140,7 +176,7 @@ void ui_draw_menu(void) {
             break;
 
         default:
-            ui_state = UI_INIT;
+            ui_page = UI_START;
     }
 
     draw_button("Next...", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, TFT_MAGENTA);
@@ -162,10 +198,10 @@ void ui_run(void) {
             // TODO should act on both TV lights (box and amp)
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
             // switch to next page
-            ui_state = (enum ui_states)((ui_state + 1) % UI_NUM_STATES);
-            if (ui_state == UI_INIT) {
+            ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
+            if (ui_page == UI_START) {
                 // skip init screen
-                ui_state = (enum ui_states)((ui_state + 1) % UI_NUM_STATES);
+                ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
             }
             tft.fillScreen(TFT_BLACK);
         }

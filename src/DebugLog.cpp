@@ -38,7 +38,7 @@ void DebugLog::addToBuffer(String s) {
 
 void DebugLog::sendToTargets(String s) {
     Serial.print(s);
-    
+
     s = "log:" + s;
     wifi_send_websocket(s);
 }
@@ -51,7 +51,7 @@ void DebugLog::print(String s) {
 #ifdef ENABLE_DEBUGLOG
     addToBuffer(s);
 #endif // ENABLE_DEBUGLOG
-    
+
     sendToTargets(s);
 }
 

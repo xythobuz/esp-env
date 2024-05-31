@@ -52,12 +52,11 @@
 #define BTNS_OFF_X ((LCD_WIDTH - (2 * BTN_W) - (1 * BTN_GAP)) / 2)
 #define BTNS_OFF_Y ((LCD_HEIGHT - (3 * BTN_H) - (2 * BTN_GAP)) / 2)
 
-#define INVERT_BOOL(x) (x) = !(x);
+#define INVERT_BOOL(x) (x) = !(x)
 
 #define LDR_CHECK_MS 1000
-
-#define TOUCH_PRESSURE_MIN_DOWN 200
-#define TOUCH_PRESSURE_MIN_UP 10
+#define MIN_TOUCH_DELAY_MS 200
+#define TOUCH_PRESSURE_MIN 200
 
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
@@ -79,6 +78,7 @@ static enum ui_pages ui_page = UI_START;
 static bool is_touched = false;
 static unsigned long last_ldr = 0;
 static int ldr_value = 0;
+static unsigned long last_touch_time = 0;
 
 static TS_Point touchToScreen(TS_Point p) {
     p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
@@ -305,11 +305,15 @@ void ui_progress(enum ui_state state) {
 
 void ui_run(void) {
     unsigned long now = millis();
+
     if (now >= (last_ldr + LDR_CHECK_MS)) {
         last_ldr = now;
         int ldr = analogRead(LDR_PIN);
+
+        // TODO lowpass?
         //ldr_value = (ldr_value * 0.9f) + (ldr * 0.1f);
         ldr_value = ldr;
+
         if (ui_page == UI_INFO) {
             ui_draw_menu();
         }
@@ -322,13 +326,14 @@ void ui_run(void) {
         p = touchToScreen(ts.getPoint());
 
         // minimum pressure
-        if (p.z < TOUCH_PRESSURE_MIN_DOWN) {
+        if (p.z < TOUCH_PRESSURE_MIN) {
             touched = false;
         }
     }
 
     if (touched && (!is_touched)) {
         is_touched = true;
+        last_touch_time = millis();
 
         if (ui_page == UI_INFO) {
             // switch to next page
@@ -406,7 +411,7 @@ void ui_run(void) {
         }
 
         ui_draw_menu();
-    } else if ((!touched) && is_touched && (p.z < TOUCH_PRESSURE_MIN_UP)) {
+    } else if ((!touched) && is_touched && ((now - last_touch_time) >= MIN_TOUCH_DELAY_MS)) {
         is_touched = false;
     }
 }

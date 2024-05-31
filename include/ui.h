@@ -14,6 +14,13 @@
 #ifndef __UI_H__
 #define __UI_H__
 
+enum bathroom_light_states {
+    BATH_LIGHT_OFF,
+    BATH_LIGHT_NONE,
+    BATH_LIGHT_BIG,
+    BATH_LIGHT_SMALL,
+};
+
 struct ui_status {
     bool light_corner;
     bool light_workspace;
@@ -23,6 +30,7 @@ struct ui_status {
     bool light_pc;
     bool light_amp;
     bool light_box;
+    enum bathroom_light_states bathroom_lights;
 };
 
 extern struct ui_status ui_status;

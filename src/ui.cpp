@@ -61,6 +61,7 @@ enum ui_pages {
     UI_START = 0,
     UI_LIVINGROOM1,
     UI_LIVINGROOM2,
+    UI_BATHROOM,
 
     UI_NUM_PAGES
 };
@@ -143,6 +144,32 @@ static void draw_livingroom2(void) {
                 ui_status.light_box ? TFT_GREEN : TFT_RED);
 }
 
+static void draw_bathroom(void) {
+    // 1
+    draw_button("Bath Lights Auto",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.bathroom_lights == BATH_LIGHT_NONE ? TFT_GREEN : TFT_RED);
+
+    // 2
+    draw_button("Bath Lights Big",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.bathroom_lights == BATH_LIGHT_BIG ? TFT_GREEN : TFT_RED);
+
+    // 4
+    draw_button("Bath Lights Off",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.bathroom_lights == BATH_LIGHT_OFF ? TFT_GREEN : TFT_RED);
+
+    // 5
+    draw_button("Bath Lights Small",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.bathroom_lights == BATH_LIGHT_SMALL ? TFT_GREEN : TFT_RED);
+}
+
 void ui_init(void) {
     mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     ts.begin(mySpi);
@@ -171,6 +198,10 @@ static void ui_draw_menu(void) {
 
         case UI_LIVINGROOM2:
             draw_livingroom2();
+            break;
+
+        case UI_BATHROOM:
+            draw_bathroom();
             break;
 
         default:
@@ -237,6 +268,8 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_corner);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_pc);
+            } else if (ui_page == UI_BATHROOM) {
+                ui_status.bathroom_lights = BATH_LIGHT_NONE;
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
@@ -245,6 +278,8 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_workspace);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_bench);
+            } else if (ui_page == UI_BATHROOM) {
+                ui_status.bathroom_lights = BATH_LIGHT_BIG;
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
@@ -259,6 +294,8 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.sound_amplifier);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_amp);
+            } else if (ui_page == UI_BATHROOM) {
+                ui_status.bathroom_lights = BATH_LIGHT_OFF;
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
@@ -273,6 +310,8 @@ void ui_run(void) {
                 ui_status.light_box = false;
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_box);
+            } else if (ui_page == UI_BATHROOM) {
+                ui_status.bathroom_lights = BATH_LIGHT_SMALL;
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {

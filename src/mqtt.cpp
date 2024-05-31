@@ -110,6 +110,12 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         state = 1;
     } else if (ps.indexOf("off") != -1) {
         state = 0;
+    } else if (ps.indexOf("big") != -1) {
+        state = 3;
+    } else if (ps.indexOf("small") != -1) {
+        state = 2;
+    } else if (ps.indexOf("none") != -1) {
+        state = 4;
     } else {
         return;
     }
@@ -179,6 +185,19 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
     } else if (ts == "livingroom/amp/cmnd/POWER") {
         ui_status.sound_amplifier = state ? true : false;
         ui_progress(UI_UPDATE);
+    } else if (ts == "bathroom/force_light") {
+        if (state == 0) {
+            ui_status.bathroom_lights = BATH_LIGHT_OFF;
+        } else if (state == 1) {
+            ui_status.bathroom_lights = BATH_LIGHT_NONE;
+        } else if (state == 2) {
+            ui_status.bathroom_lights = BATH_LIGHT_SMALL;
+        } else if (state == 3) {
+            ui_status.bathroom_lights = BATH_LIGHT_BIG;
+        } else if (state == 4) {
+            ui_status.bathroom_lights = BATH_LIGHT_NONE;
+        }
+        ui_progress(UI_UPDATE);
     }
 #endif // FEATURE_UI
 }
@@ -213,6 +232,7 @@ static void mqttReconnect() {
         mqtt.subscribe("livingroom/light_corner/cmnd/POWER");
         mqtt.subscribe("livingroom/workbench/cmnd/POWER");
         mqtt.subscribe("livingroom/amp/cmnd/POWER");
+        mqtt.subscribe("bathroom/force_light");
 #endif // FEATURE_UI
     }
 }
@@ -276,6 +296,17 @@ void writeMQTT_UI(void) {
     }
     if (curr_status.sound_amplifier != prev_status.sound_amplifier) {
         mqttPublish("livingroom/amp/cmnd/POWER", curr_status.sound_amplifier ? "on" : "off", true);
+    }
+    if (curr_status.bathroom_lights != prev_status.bathroom_lights) {
+        if (curr_status.bathroom_lights == BATH_LIGHT_BIG) {
+            mqttPublish("bathroom/force_light", "big", true);
+        } else if (curr_status.bathroom_lights == BATH_LIGHT_SMALL) {
+            mqttPublish("bathroom/force_light", "small", true);
+        } else if (curr_status.bathroom_lights == BATH_LIGHT_OFF) {
+            mqttPublish("bathroom/force_light", "off", true);
+        } else {
+            mqttPublish("bathroom/force_light", "none", true);
+        }
     }
 
     prev_status = curr_status;

@@ -67,6 +67,7 @@ enum ui_pages {
 };
 
 static enum ui_pages ui_page = UI_START;
+static bool is_touched = false;
 
 static TS_Point touchToScreen(TS_Point p) {
     p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
@@ -259,7 +260,10 @@ void ui_progress(enum ui_state state) {
 }
 
 void ui_run(void) {
-    if (ts.tirqTouched() && ts.touched()) {
+    bool touched = ts.tirqTouched() && ts.touched();
+
+    if (touched && (!is_touched)) {
+        is_touched = true;
         TS_Point p = touchToScreen(ts.getPoint());
 
         if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
@@ -325,7 +329,8 @@ void ui_run(void) {
         }
 
         ui_draw_menu();
-        delay(100); // TODO
+    } else if ((!touched) && is_touched) {
+        is_touched = false;
     }
 }
 

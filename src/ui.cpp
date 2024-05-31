@@ -15,6 +15,7 @@
  */
 
 #include <Arduino.h>
+#include <WiFi.h>
 
 #include "config.h"
 #include "mqtt.h"
@@ -54,6 +55,9 @@
 #define INVERT_BOOL(x) (x) = !(x);
 
 #define LDR_CHECK_MS 1000
+
+#define TOUCH_PRESSURE_MIN_DOWN 200
+#define TOUCH_PRESSURE_MIN_UP 10
 
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
@@ -190,8 +194,15 @@ static void draw_info(void) {
     tft.drawString("Build Time: " __TIME__, 0, 40 + 16 * 1, 1);
     tft.drawString("Location: " SENSOR_LOCATION, 0, 40 + 16 * 2, 1);
     tft.drawString("ID: " SENSOR_ID, 0, 40 + 16 * 3, 1);
+    tft.drawString("MAC: " + String(WiFi.macAddress()), 0, 40 + 16 * 4, 1);
+    tft.drawString("Free heap: " + String(ESP.getFreeHeap() / 1024.0f) + "k", 0, 40 + 16 * 5, 1);
+    tft.drawString("Free sketch space: " + String(ESP.getFreeSketchSpace() / 1024.0f) + "k", 0, 40 + 16 * 6, 1);
+    tft.drawString("Flash chip size: " + String(ESP.getFlashChipSize() / 1024.0f) + "k", 0, 40 + 16 * 7, 1);
+    tft.drawString("Uptime: " + String(millis() / 1000) + "sec", 0, 40 + 16 * 8, 1);
+    tft.drawString("IPv4: " + WiFi.localIP().toString(), 0, 40 + 16 * 9, 1);
+    tft.drawString("IPv6: " + WiFi.localIPv6().toString(), 0, 40 + 16 * 10, 1);
 
-    tft.drawString("LDR: " + String(ldr_value), 0, 40 + 16 * 5, 1);
+    tft.drawString("LDR: " + String(ldr_value), 0, 40 + 16 * 12, 1);
 }
 
 void ui_init(void) {
@@ -311,7 +322,7 @@ void ui_run(void) {
         p = touchToScreen(ts.getPoint());
 
         // minimum pressure
-        if (p.z < 100) {
+        if (p.z < TOUCH_PRESSURE_MIN_DOWN) {
             touched = false;
         }
     }
@@ -395,7 +406,7 @@ void ui_run(void) {
         }
 
         ui_draw_menu();
-    } else if ((!touched) && is_touched) {
+    } else if ((!touched) && is_touched && (p.z < TOUCH_PRESSURE_MIN_UP)) {
         is_touched = false;
     }
 }

@@ -201,7 +201,7 @@ static void draw_info(void) {
     tft.drawString("Uptime: " + String(millis() / 1000) + "sec", 0, 40 + 16 * 8, 1);
     tft.drawString("IPv4: " + WiFi.localIP().toString(), 0, 40 + 16 * 9, 1);
     tft.drawString("IPv6: " + WiFi.localIPv6().toString(), 0, 40 + 16 * 10, 1);
-
+    tft.drawString("Hostname: " + String(SENSOR_HOSTNAME_PREFIX) + String(SENSOR_ID), 0, 40 + 16 * 11, 1);
     tft.drawString("LDR: " + String(ldr_value), 0, 40 + 16 * 12, 1);
 }
 

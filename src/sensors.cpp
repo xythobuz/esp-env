@@ -271,7 +271,7 @@ void initSensors() {
 
 void runSensors() {
     unsigned long time = millis();
-    
+
     if ((time - last_sensor_handle_time) >= SENSOR_HANDLE_INTERVAL) {
         last_sensor_handle_time = time;
 

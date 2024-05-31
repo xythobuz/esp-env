@@ -93,4 +93,12 @@
 #define BUILTIN_LED_PIN 13
 #endif
 
+#if defined(ARDUINO_ARCH_ESP8266)
+#define ESP_PLATFORM_NAME "ESP8266"
+#elif defined(ARDUINO_ARCH_ESP32)
+#define ESP_PLATFORM_NAME "ESP32"
+#elif defined(ARDUINO_ARCH_AVR)
+#define ESP_PLATFORM_NAME "Uno WiFi"
+#endif
+
 #endif // __ESP_ENV_CONFIG__

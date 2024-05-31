@@ -36,6 +36,8 @@
 #define LEDC_TIMER_12_BIT 12
 #define LEDC_BASE_FREQ 5000
 
+#define LDR_PIN 34
+
 #define TOUCH_LEFT 180
 #define TOUCH_RIGHT 3750
 
@@ -51,6 +53,8 @@
 
 #define INVERT_BOOL(x) (x) = !(x);
 
+#define LDR_CHECK_MS 1000
+
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
 static TFT_eSPI tft = TFT_eSPI();
@@ -62,12 +66,15 @@ enum ui_pages {
     UI_LIVINGROOM1,
     UI_LIVINGROOM2,
     UI_BATHROOM,
+    UI_INFO,
 
     UI_NUM_PAGES
 };
 
 static enum ui_pages ui_page = UI_START;
 static bool is_touched = false;
+static unsigned long last_ldr = 0;
+static int ldr_value = 0;
 
 static TS_Point touchToScreen(TS_Point p) {
     p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
@@ -171,6 +178,22 @@ static void draw_bathroom(void) {
                 ui_status.bathroom_lights == BATH_LIGHT_SMALL ? TFT_GREEN : TFT_RED);
 }
 
+static void draw_info(void) {
+    tft.fillScreen(TFT_BLACK);
+
+    tft.setTextDatum(TC_DATUM); // top center
+    tft.drawString(ESP_PLATFORM_NAME " " NAME_OF_FEATURE " V" ESP_ENV_VERSION, LCD_WIDTH / 2, 0, 2);
+    tft.drawString("by xythobuz.de", LCD_WIDTH / 2, 16, 2);
+
+    tft.setTextDatum(TL_DATUM); // top left
+    tft.drawString("Build Date: " __DATE__, 0, 40 + 16 * 0, 1);
+    tft.drawString("Build Time: " __TIME__, 0, 40 + 16 * 1, 1);
+    tft.drawString("Location: " SENSOR_LOCATION, 0, 40 + 16 * 2, 1);
+    tft.drawString("ID: " SENSOR_ID, 0, 40 + 16 * 3, 1);
+
+    tft.drawString("LDR: " + String(ldr_value), 0, 40 + 16 * 5, 1);
+}
+
 void ui_init(void) {
     mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     ts.begin(mySpi);
@@ -182,6 +205,12 @@ void ui_init(void) {
     ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
     ledcAttachPin(TFT_BL, LEDC_CHANNEL_0);
     ledcAnalogWrite(LEDC_CHANNEL_0, 255);
+
+    pinMode(LDR_PIN, ANALOG);
+    analogSetAttenuation(ADC_0db);
+    analogReadResolution(12);
+    analogSetPinAttenuation(LDR_PIN, ADC_0db);
+    ldr_value = analogRead(LDR_PIN);
 
     ui_progress(UI_INIT);
 }
@@ -204,6 +233,10 @@ static void ui_draw_menu(void) {
         case UI_BATHROOM:
             draw_bathroom();
             break;
+
+        case UI_INFO:
+            draw_info();
+            return; // no next button
 
         default:
             ui_page = UI_START;
@@ -260,11 +293,44 @@ void ui_progress(enum ui_state state) {
 }
 
 void ui_run(void) {
+    unsigned long now = millis();
+    if (now >= (last_ldr + LDR_CHECK_MS)) {
+        last_ldr = now;
+        int ldr = analogRead(LDR_PIN);
+        //ldr_value = (ldr_value * 0.9f) + (ldr * 0.1f);
+        ldr_value = ldr;
+        if (ui_page == UI_INFO) {
+            ui_draw_menu();
+        }
+    }
+
     bool touched = ts.tirqTouched() && ts.touched();
+    TS_Point p;
+
+    if (touched) {
+        p = touchToScreen(ts.getPoint());
+
+        // minimum pressure
+        if (p.z < 100) {
+            touched = false;
+        }
+    }
 
     if (touched && (!is_touched)) {
         is_touched = true;
-        TS_Point p = touchToScreen(ts.getPoint());
+
+        if (ui_page == UI_INFO) {
+            // switch to next page
+            ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
+            if (ui_page == UI_START) {
+                // skip init screen
+                ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
+            }
+            tft.fillScreen(TFT_BLACK);
+
+            ui_draw_menu();
+            return;
+        }
 
         if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
             // 1

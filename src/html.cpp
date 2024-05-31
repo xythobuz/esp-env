@@ -18,20 +18,17 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#define ESP_PLATFORM_NAME "ESP8266"
 
 #elif defined(ARDUINO_ARCH_ESP32)
 
 #include <WiFi.h>
 #include <WebServer.h>
 #include <ESPmDNS.h>
-#define ESP_PLATFORM_NAME "ESP32"
 
 #elif defined(ARDUINO_ARCH_AVR)
 
 #include <UnoWiFiDevEdSerial1.h>
 #include <WiFiLink.h>
-#define ESP_PLATFORM_NAME "Uno WiFi"
 
 #endif
 
@@ -128,7 +125,7 @@ void handlePage(WiFiClient &client, int mode, int id) {
     ARDUINO_SEND_PARTIAL_PAGE();
 
 #if defined(ARDUINO_ARCH_ESP8266)
-    
+
     message += F("<p>");
     message += F("Reset reason: ");
     message += ESP.getResetReason();
@@ -151,9 +148,9 @@ void handlePage(WiFiClient &client, int mode, int id) {
         message += (ESP.getFlashChipSize());
         message += F(") does not match!");
     }
-    
+
     message += F("</p>");
-    
+
 #elif defined(ARDUINO_ARCH_ESP32)
 
     message += F("<p>");
@@ -166,7 +163,7 @@ void handlePage(WiFiClient &client, int mode, int id) {
     message += F("Flash chip size: ");
     message += String(ESP.getFlashChipSize() / 1024.0);
     message += F("k</p><hr>");
-    
+
 #endif
 
 #ifdef ENABLE_BME280

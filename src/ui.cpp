@@ -38,6 +38,7 @@
 #define LEDC_BASE_FREQ 5000
 
 #define LDR_PIN 34
+#define BTN_PIN 0
 
 #define TOUCH_LEFT 180
 #define TOUCH_RIGHT 3750
@@ -226,6 +227,8 @@ void ui_init(void) {
     ledcAttachPin(TFT_BL, LEDC_CHANNEL_0);
     ledcAnalogWrite(LEDC_CHANNEL_0, 255);
 
+    pinMode(BTN_PIN, INPUT);
+
     pinMode(LDR_PIN, ANALOG);
     analogSetAttenuation(ADC_0db);
     analogReadResolution(12);
@@ -315,6 +318,10 @@ void ui_progress(enum ui_state state) {
 void ui_run(void) {
     unsigned long now = millis();
 
+    if (!digitalRead(BTN_PIN)) {
+        ui_page = UI_INFO;
+    }
+
     if (now >= (last_ldr + LDR_CHECK_MS)) {
         last_ldr = now;
         int ldr = analogRead(LDR_PIN);
@@ -345,12 +352,10 @@ void ui_run(void) {
         last_touch_time = millis();
 
         if (ui_page == UI_INFO) {
-            // switch to next page
-            ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
-            if (ui_page == UI_START) {
-                // skip init screen
+            // switch to next page, skip init and info screen
+            do {
                 ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
-            }
+            } while ((ui_page == UI_START) || (ui_page == UI_INFO));
             tft.fillScreen(TFT_BLACK);
 
             ui_draw_menu();
@@ -421,12 +426,10 @@ void ui_run(void) {
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
-            // switch to next page
-            ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
-            if (ui_page == UI_START) {
-                // skip init screen
+            // switch to next page, skip init and info screen
+            do {
                 ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
-            }
+            } while ((ui_page == UI_START) || (ui_page == UI_INFO));
             tft.fillScreen(TFT_BLACK);
         }
 

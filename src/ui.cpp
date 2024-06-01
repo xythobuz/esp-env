@@ -16,8 +16,10 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <time.h>
 
 #include "config.h"
+#include "DebugLog.h"
 #include "mqtt.h"
 #include "ui.h"
 
@@ -59,7 +61,15 @@
 #define MIN_TOUCH_DELAY_MS 200
 #define TOUCH_PRESSURE_MIN 200
 #define FULL_BRIGHT_MS (1000 * 30)
-#define NO_BRIGHT_MS (1000 * 5)
+#define NO_BRIGHT_MS (1000 * 2)
+#define STANDBY_BRIGHTNESS 10
+
+#define NTP_SERVER "pool.ntp.org"
+#define STANDBY_REDRAW_MS (1000 * 10)
+
+// TODO make configurable
+#define gmtOffset_sec (60 * 60)
+#define daylightOffset_sec (60 * 60)
 
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
@@ -84,6 +94,7 @@ static int ldr_value = 0;
 static unsigned long last_touch_time = 0;
 static int curr_brightness = 255;
 static int set_max_brightness = 255;
+static unsigned long last_standby_draw = 0;
 
 static TS_Point touchToScreen(TS_Point p) {
     p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
@@ -219,6 +230,47 @@ static void draw_info(void) {
     tft.drawString("LDR: " + String(ldr_value), 0, 40 + 16 * 12, 1);
 }
 
+static void draw_standby(void) {
+    tft.fillScreen(TFT_BLACK);
+
+    tft.setTextDatum(TC_DATUM); // top center
+    tft.drawString(ESP_PLATFORM_NAME " " NAME_OF_FEATURE " V" ESP_ENV_VERSION, LCD_WIDTH / 2, 0, 2);
+    tft.drawString("by xythobuz.de", LCD_WIDTH / 2, 16, 2);
+
+    struct tm timeinfo;
+    String date, time;
+    if(getLocalTime(&timeinfo)) {
+        if (timeinfo.tm_mday < 10) {
+            date += "0";
+        }
+        date += String(timeinfo.tm_mday);
+        date += ".";
+        if ((timeinfo.tm_mon + 1) < 10) {
+            date += "0";
+        }
+        date += String(timeinfo.tm_mon + 1);
+        date += ".";
+        date += String(timeinfo.tm_year + 1900);
+
+        if (timeinfo.tm_hour < 10) {
+            time += "0";
+        }
+        time += String(timeinfo.tm_hour);
+        time += ":";
+        if (timeinfo.tm_min < 10) {
+            time += "0";
+        }
+        time += String(timeinfo.tm_min);
+    }
+
+    tft.setTextDatum(MC_DATUM); // middle center
+    tft.drawString(date, LCD_WIDTH / 2, LCD_HEIGHT / 2 - 8, 2);
+    tft.drawString(time, LCD_WIDTH / 2, LCD_HEIGHT / 2 + 8, 2);
+
+    tft.setTextDatum(BC_DATUM); // bottom center
+    tft.drawString("Touch to begin...", LCD_WIDTH / 2, LCD_HEIGHT, 2);
+}
+
 void ui_init(void) {
     mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     ts.begin(mySpi);
@@ -310,6 +362,9 @@ void ui_progress(enum ui_state state) {
         } break;
 
         case UI_READY: {
+            // get time via NTP
+            configTime(gmtOffset_sec, daylightOffset_sec, NTP_SERVER);
+
             ui_page = UI_START;
             ui_draw_menu();
         } break;
@@ -328,9 +383,14 @@ void ui_run(void) {
     if (diff < FULL_BRIGHT_MS) {
         curr_brightness = set_max_brightness;
     } else if (diff < (FULL_BRIGHT_MS + NO_BRIGHT_MS)) {
-        curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, 0);
+        curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, STANDBY_BRIGHTNESS);
     } else {
-        curr_brightness = 0;
+        if ((curr_brightness > STANDBY_BRIGHTNESS) || ((now - last_standby_draw) >= STANDBY_REDRAW_MS)) {
+            // enter standby screen
+            draw_standby();
+            last_standby_draw = now;
+        }
+        curr_brightness = STANDBY_BRIGHTNESS;
     }
     ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
 
@@ -372,7 +432,9 @@ void ui_run(void) {
 
         // skip touch event and just go back to full brightness
         if (curr_brightness < set_max_brightness) {
-            return ui_run();
+            tft.fillScreen(TFT_BLACK); // exit standby screen
+            ui_draw_menu(); // re-draw normal screen contents
+            return ui_run(); // skip touch and increase brightness
         }
 
         if (ui_page == UI_INFO) {

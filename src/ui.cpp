@@ -58,6 +58,8 @@
 #define LDR_CHECK_MS 1000
 #define MIN_TOUCH_DELAY_MS 200
 #define TOUCH_PRESSURE_MIN 200
+#define FULL_BRIGHT_MS (1000 * 30)
+#define NO_BRIGHT_MS (1000 * 5)
 
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
@@ -80,6 +82,8 @@ static bool is_touched = false;
 static unsigned long last_ldr = 0;
 static int ldr_value = 0;
 static unsigned long last_touch_time = 0;
+static int curr_brightness = 255;
+static int set_max_brightness = 255;
 
 static TS_Point touchToScreen(TS_Point p) {
     p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
@@ -225,7 +229,8 @@ void ui_init(void) {
 
     ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
     ledcAttachPin(TFT_BL, LEDC_CHANNEL_0);
-    ledcAnalogWrite(LEDC_CHANNEL_0, 255);
+    curr_brightness = set_max_brightness;
+    ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
 
     pinMode(BTN_PIN, INPUT);
 
@@ -318,10 +323,23 @@ void ui_progress(enum ui_state state) {
 void ui_run(void) {
     unsigned long now = millis();
 
+    // adjust backlight brightness
+    unsigned long diff = now - last_touch_time;
+    if (diff < FULL_BRIGHT_MS) {
+        curr_brightness = set_max_brightness;
+    } else if (diff < (FULL_BRIGHT_MS + NO_BRIGHT_MS)) {
+        curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, 0);
+    } else {
+        curr_brightness = 0;
+    }
+    ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
+
+    // go to info page when BOOT button is pressed
     if (!digitalRead(BTN_PIN)) {
         ui_page = UI_INFO;
     }
 
+    // read out LDR in regular intervals
     if (now >= (last_ldr + LDR_CHECK_MS)) {
         last_ldr = now;
         int ldr = analogRead(LDR_PIN);
@@ -330,6 +348,7 @@ void ui_run(void) {
         //ldr_value = (ldr_value * 0.9f) + (ldr * 0.1f);
         ldr_value = ldr;
 
+        // refresh info page, it shows the LDR value
         if (ui_page == UI_INFO) {
             ui_draw_menu();
         }
@@ -350,6 +369,11 @@ void ui_run(void) {
     if (touched && (!is_touched)) {
         is_touched = true;
         last_touch_time = millis();
+
+        // skip touch event and just go back to full brightness
+        if (curr_brightness < set_max_brightness) {
+            return ui_run();
+        }
 
         if (ui_page == UI_INFO) {
             // switch to next page, skip init and info screen

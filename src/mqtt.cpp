@@ -174,6 +174,10 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         }
         prev_status.bathroom_lights = ui_status.bathroom_lights;
         ui_progress(UI_UPDATE);
+    } else if (ts == "livingroom/light_sink/cmnd/POWER") {
+        ui_status.light_sink = state ? true : false;
+        prev_status.light_sink = ui_status.light_sink;
+        ui_progress(UI_UPDATE);
     }
 #endif // FEATURE_UI
 
@@ -247,6 +251,7 @@ static void mqttReconnect() {
         mqtt.subscribe("livingroom/workbench/cmnd/POWER");
         mqtt.subscribe("livingroom/amp/cmnd/POWER");
         mqtt.subscribe("bathroom/force_light");
+        mqtt.subscribe("livingroom/light_sink/cmnd/POWER");
 #endif // FEATURE_UI
     }
 }
@@ -320,6 +325,9 @@ void writeMQTT_UI(void) {
         } else {
             mqttPublish("bathroom/force_light", "none", true);
         }
+    }
+    if (curr_status.light_sink != prev_status.light_sink) {
+        mqttPublish("livingroom/light_sink/cmnd/POWER", curr_status.light_sink ? "on" : "off", true);
     }
 
     prev_status = curr_status;

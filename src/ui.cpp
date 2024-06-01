@@ -112,10 +112,10 @@ static void draw_livingroom1(void) {
                 ui_status.light_workspace ? TFT_GREEN : TFT_RED);
 
     // 3
-    draw_button("Lights Kitchen",
+    draw_button("Lights Sink",
                 BTNS_OFF_X + BTN_W / 2,
                 BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
-                ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
+                ui_status.light_sink ? TFT_GREEN : TFT_RED);
 
     // 4
     draw_button("Sound Amp.",
@@ -124,7 +124,10 @@ static void draw_livingroom1(void) {
                 ui_status.sound_amplifier ? TFT_GREEN : TFT_RED);
 
     // 5
-    draw_button("All Lights Off",
+    bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
+            || ui_status.light_amp || ui_status.light_bench || ui_status.light_box
+            || ui_status.light_kitchen || ui_status.light_pc;
+    draw_button(on ? "All Lights Off" : "Wake Up Lights",
                 BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
                 BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
                 TFT_MAGENTA);
@@ -142,6 +145,12 @@ static void draw_livingroom2(void) {
                 BTNS_OFF_X + BTN_W / 2,
                 BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
                 ui_status.light_bench ? TFT_GREEN : TFT_RED);
+
+    // 3
+    draw_button("Lights Kitchen",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
 
     // 4
     draw_button("Lights Amp.",
@@ -371,6 +380,8 @@ void ui_run(void) {
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
             // 3
             if (ui_page == UI_LIVINGROOM1) {
+                INVERT_BOOL(ui_status.light_sink);
+            } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_kitchen);
             }
             writeMQTT_UI();
@@ -387,13 +398,22 @@ void ui_run(void) {
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
             // 5
             if (ui_page == UI_LIVINGROOM1) {
-                ui_status.light_amp = false;
-                ui_status.light_kitchen = false;
-                ui_status.light_bench= false;
-                ui_status.light_workspace = false;
-                ui_status.light_pc = false;
-                ui_status.light_corner = false;
-                ui_status.light_box = false;
+                bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
+                        || ui_status.light_amp || ui_status.light_bench || ui_status.light_box
+                        || ui_status.light_kitchen || ui_status.light_pc;
+                if (on) {
+                    ui_status.light_amp = false;
+                    ui_status.light_kitchen = false;
+                    ui_status.light_bench= false;
+                    ui_status.light_workspace = false;
+                    ui_status.light_pc = false;
+                    ui_status.light_corner = false;
+                    ui_status.light_box = false;
+                    ui_status.light_sink = false;
+                } else {
+                    ui_status.light_corner = true;
+                    ui_status.light_sink = true;
+                }
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_box);
             } else if (ui_page == UI_BATHROOM) {

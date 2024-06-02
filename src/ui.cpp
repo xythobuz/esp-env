@@ -4,7 +4,11 @@
  * https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/blob/main/Examples/Basics/2-TouchTest/2-TouchTest.ino
  * https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/blob/main/Examples/Basics/4-BacklightControlTest/4-BacklightControlTest.ino
  *
- * ESP8266 / ESP32 Environmental Sensor
+ * ESP8266 / ESP32 Environmental
+ * Touch UI for ESP32 CYD (Cheap Yellow Display).
+ *
+ * LDR circuit on this board is really strange and does not give me useful information.
+ * To get it working remove R19 and replace R15 with 100k.
  *
  * ----------------------------------------------------------------------------
  * "THE BEER-WARE LICENSE" (Revision 42):
@@ -56,13 +60,22 @@
 #define BTNS_OFF_Y ((LCD_HEIGHT - (3 * BTN_H) - (2 * BTN_GAP)) / 2)
 
 #define INVERT_BOOL(x) (x) = !(x)
+#define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-#define LDR_CHECK_MS 1000
+#define LDR_CHECK_MS 100
+#define LDR_DARK_VALUE 1200
+#define LDR_BRIGHT_VALUE 0
+#define LDR_LOWPASS_FACT 0.1f
+
+#define STANDBY_BRIGHTNESS 10
+#define LCD_MIN_BRIGHTNESS (STANDBY_BRIGHTNESS * 2)
+#define LCD_MAX_BRIGHTNESS 255
+
 #define MIN_TOUCH_DELAY_MS 200
 #define TOUCH_PRESSURE_MIN 200
 #define FULL_BRIGHT_MS (1000 * 30)
 #define NO_BRIGHT_MS (1000 * 2)
-#define STANDBY_BRIGHTNESS 10
 
 #define NTP_SERVER "pool.ntp.org"
 #define STANDBY_REDRAW_MS 500
@@ -93,8 +106,8 @@ static bool is_touched = false;
 static unsigned long last_ldr = 0;
 static int ldr_value = 0;
 static unsigned long last_touch_time = 0;
-static int curr_brightness = 255;
-static int set_max_brightness = 255;
+static int curr_brightness = LCD_MAX_BRIGHTNESS;
+static int set_max_brightness = LCD_MAX_BRIGHTNESS;
 static unsigned long last_standby_draw = 0;
 
 static TS_Point touchToScreen(TS_Point p) {
@@ -392,9 +405,33 @@ void ui_progress(enum ui_state state) {
 void ui_run(void) {
     unsigned long now = millis();
 
+    // go to info page when BOOT button is pressed
+    if (!digitalRead(BTN_PIN)) {
+        ui_page = UI_INFO;
+    }
+
+    // read out LDR in regular intervals
+    if (now >= (last_ldr + LDR_CHECK_MS)) {
+        last_ldr = now;
+        int ldr = analogRead(LDR_PIN);
+
+        ldr_value = (ldr_value * (1.0f - LDR_LOWPASS_FACT)) + (ldr * LDR_LOWPASS_FACT);
+
+        // adjust backlight according to ldr
+        int tmp = MIN(LDR_DARK_VALUE, MAX(0, ldr_value));
+        set_max_brightness = map(tmp, LDR_DARK_VALUE, LDR_BRIGHT_VALUE, LCD_MIN_BRIGHTNESS, LCD_MAX_BRIGHTNESS);
+
+        // refresh info page every 1s, it shows the LDR value
+        static int cnt = 0;
+        if ((ui_page == UI_INFO) && (++cnt >= (1000 / LDR_CHECK_MS))) {
+            cnt = 0;
+            ui_draw_menu();
+        }
+    }
+
     // adjust backlight brightness
     unsigned long diff = now - last_touch_time;
-    if (diff < FULL_BRIGHT_MS) {
+    if ((diff < FULL_BRIGHT_MS) || (ui_page == UI_INFO))  {
         curr_brightness = set_max_brightness;
     } else if (diff < (FULL_BRIGHT_MS + NO_BRIGHT_MS)) {
         curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, STANDBY_BRIGHTNESS);
@@ -407,26 +444,6 @@ void ui_run(void) {
         curr_brightness = STANDBY_BRIGHTNESS;
     }
     ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
-
-    // go to info page when BOOT button is pressed
-    if (!digitalRead(BTN_PIN)) {
-        ui_page = UI_INFO;
-    }
-
-    // read out LDR in regular intervals
-    if (now >= (last_ldr + LDR_CHECK_MS)) {
-        last_ldr = now;
-        int ldr = analogRead(LDR_PIN);
-
-        // TODO lowpass?
-        //ldr_value = (ldr_value * 0.9f) + (ldr * 0.1f);
-        ldr_value = ldr;
-
-        // refresh info page, it shows the LDR value
-        if (ui_page == UI_INFO) {
-            ui_draw_menu();
-        }
-    }
 
     bool touched = ts.tirqTouched() && ts.touched();
     TS_Point p;
@@ -442,7 +459,7 @@ void ui_run(void) {
 
     if (touched && (!is_touched)) {
         is_touched = true;
-        last_touch_time = millis();
+        last_touch_time = now;
 
         // skip touch event and just go back to full brightness
         if (curr_brightness < set_max_brightness) {

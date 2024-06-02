@@ -382,7 +382,9 @@ void ui_progress(enum ui_state state) {
         } break;
 
         case UI_UPDATE: {
-            ui_draw_menu();
+            if (curr_brightness >= set_max_brightness) {
+                ui_draw_menu();
+            }
         } break;
     }
 }

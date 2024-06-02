@@ -65,9 +65,10 @@
 #define STANDBY_BRIGHTNESS 10
 
 #define NTP_SERVER "pool.ntp.org"
-#define STANDBY_REDRAW_MS (1000 * 10)
+#define STANDBY_REDRAW_MS 500
 
-// TODO make configurable
+// TODO auto-detect?!
+#warning hard-coded timezone and daylight savings offset
 #define gmtOffset_sec (60 * 60)
 #define daylightOffset_sec (60 * 60)
 
@@ -231,7 +232,10 @@ static void draw_info(void) {
 }
 
 static void draw_standby(void) {
-    tft.fillScreen(TFT_BLACK);
+    // only clear whole screen when first entering standby page
+    if ((curr_brightness > STANDBY_BRIGHTNESS)) {
+        tft.fillScreen(TFT_BLACK);
+    }
 
     tft.setTextDatum(TC_DATUM); // top center
     tft.drawString(ESP_PLATFORM_NAME " " NAME_OF_FEATURE " V" ESP_ENV_VERSION, LCD_WIDTH / 2, 0, 2);
@@ -239,7 +243,10 @@ static void draw_standby(void) {
 
     struct tm timeinfo;
     String date, time;
+    String weekday[7] = { "So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa." };
     if(getLocalTime(&timeinfo)) {
+        date += weekday[timeinfo.tm_wday % 7];
+        date += " ";
         if (timeinfo.tm_mday < 10) {
             date += "0";
         }
@@ -261,6 +268,11 @@ static void draw_standby(void) {
             time += "0";
         }
         time += String(timeinfo.tm_min);
+        time += ":";
+        if (timeinfo.tm_sec < 10) {
+            time += "0";
+        }
+        time += String(timeinfo.tm_sec);
     }
 
     tft.setTextDatum(MC_DATUM); // middle center

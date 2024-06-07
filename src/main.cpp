@@ -74,6 +74,10 @@ void setup() {
 
     config = mem_read();
 
+#ifdef FEATURE_UI
+    ui_progress(UI_MEMORY_READY);
+#endif // FEATURE_UI
+
 #ifdef FEATURE_RELAIS
     debug.println(F("Relais"));
     relais_init();

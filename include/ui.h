@@ -38,6 +38,7 @@ extern struct ui_status ui_status;
 
 enum ui_state {
     UI_INIT = 0,
+    UI_MEMORY_READY,
     UI_WIFI_CONNECT,
     UI_WIFI_CONNECTING,
     UI_WIFI_CONNECTED,

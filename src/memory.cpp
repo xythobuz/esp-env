@@ -14,6 +14,7 @@
 #include <Arduino.h>
 #include <EEPROM.h>
 
+#include "config.h"
 #include "DebugLog.h"
 #include "memory.h"
 

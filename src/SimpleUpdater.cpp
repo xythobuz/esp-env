@@ -17,6 +17,7 @@
 #include <Update.h>
 #endif
 
+#include "config.h"
 #include "SimpleUpdater.h"
 
 #if defined(ARDUINO_ARCH_ESP32)
@@ -87,7 +88,7 @@ void SimpleUpdater::get(void) {
         "</script>\n"
         "</body></html>"
     );
-    
+
     server->send(200, "text/html", uploadPage);
 }
 
@@ -128,25 +129,25 @@ void SimpleUpdater::setup(UPDATE_WEB_SERVER *_server) {
     if (_server == NULL) {
         return;
     }
-    
+
     server = _server;
-    
+
 #if defined(ARDUINO_ARCH_ESP8266)
-    
+
     updateServer.setup(server);
-    
+
 #elif defined(ARDUINO_ARCH_ESP32)
-    
+
     server->on(uri.c_str(), HTTP_POST, [this]() {
         postResult();
     }, [this]() {
         postUpload();
     });
-    
+
     server->on(uri.c_str(), HTTP_GET, [this]() {
         get();
     });
-    
+
 #endif
 }
 

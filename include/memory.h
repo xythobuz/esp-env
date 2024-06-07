@@ -19,10 +19,24 @@ struct ConfigMemory {
     double bme1_temp_off;
     double bme2_temp_off;
 
+#ifdef FEATURE_UI
+    int touch_calibrate_left;
+    int touch_calibrate_right;
+    int touch_calibrate_top;
+    int touch_calibrate_bottom;
+#endif // FEATURE_UI
+
     ConfigMemory() {
         sht_temp_off = 0.0;
         bme1_temp_off = 0.0;
         bme2_temp_off = 0.0;
+
+#ifdef FEATURE_UI
+        touch_calibrate_left = 0;
+        touch_calibrate_right = 0;
+        touch_calibrate_top = 0;
+        touch_calibrate_bottom = 0;
+#endif // FEATURE_UI
     }
 };
 

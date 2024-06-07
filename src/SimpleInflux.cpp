@@ -12,6 +12,8 @@
  */
 
 #include <Arduino.h>
+
+#include "config.h"
 #include "DebugLog.h"
 #include "SimpleInflux.h"
 

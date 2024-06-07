@@ -12,6 +12,8 @@
  */
 
 #include <Arduino.h>
+
+#include "config.h"
 #include "moisture.h"
 
 #if defined(MOISTURE_ADC_ESP32)
@@ -32,11 +34,11 @@ adc1_channel_t sensor_pin[SENSOR_COUNT] = {
 
 static int adc_read_oversampled(adc1_channel_t pin) {
     uint32_t sample_sum = 0;
-    
+
     for (int i = 0; i < ADC_OVERSAMPLE; i++) {
         sample_sum += adc1_get_raw(pin);
     }
-    
+
     return sample_sum / ADC_OVERSAMPLE;
 }
 
@@ -55,7 +57,7 @@ int moisture_read(int sensor) {
     if ((sensor < 0) || (sensor > SENSOR_COUNT)) {
         return -1;
     }
-    
+
     return adc_read_oversampled(sensor_pin[sensor]);
 }
 

@@ -12,8 +12,9 @@
  */
 
 #include <Arduino.h>
-#include "relais.h"
+
 #include "config.h"
+#include "relais.h"
 
 #if defined(RELAIS_SERIAL)
 

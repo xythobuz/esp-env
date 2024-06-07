@@ -25,6 +25,7 @@
 #include "config.h"
 #include "DebugLog.h"
 #include "mqtt.h"
+#include "memory.h"
 #include "ui.h"
 
 #ifdef FEATURE_UI
@@ -46,12 +47,6 @@
 #define LDR_PIN 34
 #define BTN_PIN 0
 
-#define TOUCH_LEFT 180
-#define TOUCH_RIGHT 3750
-
-#define TOUCH_TOP 230
-#define TOUCH_BOTTOM 3800
-
 #define BTN_W 120
 #define BTN_H 60
 #define BTN_GAP 20
@@ -66,24 +61,33 @@
 #define LDR_CHECK_MS 100
 #define LDR_DARK_VALUE 1200
 #define LDR_BRIGHT_VALUE 0
-#define LDR_LOWPASS_FACT 0.1f
+#define LDR_LOWPASS_FACT 0.025f
 
 #define STANDBY_BRIGHTNESS 10
 #define LCD_MIN_BRIGHTNESS (STANDBY_BRIGHTNESS * 2)
 #define LCD_MAX_BRIGHTNESS 255
 
 #define MIN_TOUCH_DELAY_MS 200
-#define TOUCH_PRESSURE_MIN 200
+#define TOUCH_PRESSURE_MIN 1000
 #define FULL_BRIGHT_MS (1000 * 30)
 #define NO_BRIGHT_MS (1000 * 2)
 
 #define NTP_SERVER "pool.ntp.org"
 #define STANDBY_REDRAW_MS 500
 
+#define CALIB_1_X 42
+#define CALIB_1_Y 42
+#define CALIB_2_X LCD_WIDTH - 1 - CALIB_1_X
+#define CALIB_2_Y LCD_HEIGHT - 1 - CALIB_1_Y
+
 // TODO auto-detect?!
 #warning hard-coded timezone and daylight savings offset
 #define gmtOffset_sec (60 * 60)
 #define daylightOffset_sec (60 * 60)
+
+#if (LCD_MIN_BRIGHTNESS <= STANDBY_BRIGHTNESS)
+#error STANDBY_BRIGHTNESS needs to be bigger than LCD_MIN_BRIGHTNESS
+#endif
 
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
@@ -109,12 +113,6 @@ static unsigned long last_touch_time = 0;
 static int curr_brightness = LCD_MAX_BRIGHTNESS;
 static int set_max_brightness = LCD_MAX_BRIGHTNESS;
 static unsigned long last_standby_draw = 0;
-
-static TS_Point touchToScreen(TS_Point p) {
-    p.x = map(p.x, TOUCH_LEFT, TOUCH_RIGHT, 0, LCD_WIDTH);
-    p.y = map(p.y, TOUCH_TOP, TOUCH_BOTTOM, 0, LCD_HEIGHT);
-    return p;
-}
 
 static void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
     uint32_t duty = (4095 / valueMax) * min(value, valueMax);
@@ -352,6 +350,76 @@ static void ui_draw_menu(void) {
     draw_button("Next...", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, TFT_CYAN);
 }
 
+static void ui_draw_reticule(int x, int y, int l) {
+    tft.drawFastHLine(x - l / 2, y, l, TFT_RED);
+    tft.drawFastVLine(x, y - l / 2, l, TFT_RED);
+    tft.drawCircle(x, y, l / 4, TFT_GREEN);
+    tft.drawPixel(x, y, TFT_WHITE);
+}
+
+static TS_Point touchToScreen(TS_Point p) {
+    p.x = map(p.x, config.touch_calibrate_left, config.touch_calibrate_right, CALIB_1_X, CALIB_2_X);
+    p.y = map(p.y, config.touch_calibrate_top, config.touch_calibrate_bottom, CALIB_1_Y, CALIB_2_Y);
+    if (p.x < 0) { p.x = 0; }
+    if (p.x >= LCD_WIDTH) { p.x = LCD_WIDTH - 1; }
+    if (p.y < 0) { p.y = 0; }
+    if (p.y >= LCD_HEIGHT) { p.y = LCD_HEIGHT - 1; }
+    return p;
+}
+
+static void ui_calibrate_touchscreen(void) {
+    for (int step = 0; step < 3; step++) {
+        tft.fillScreen(TFT_BLACK);
+        tft.setTextDatum(MC_DATUM); // middle center
+        tft.drawString("Calibrate Touchscreen", LCD_WIDTH / 2, LCD_HEIGHT / 2, 2);
+
+        if (step == 0) {
+            ui_draw_reticule(CALIB_1_X, CALIB_1_Y, 20);
+        } else if (step == 1) {
+            ui_draw_reticule(CALIB_2_X, CALIB_2_Y, 20);
+        } else {
+            tft.drawString("Press button to save", LCD_WIDTH / 2, LCD_HEIGHT / 2 + 20, 2);
+            tft.drawString("Power off to re-do", LCD_WIDTH / 2, LCD_HEIGHT / 2 + 40, 2);
+        }
+
+        if (step < 2) {
+            bool touched = false;
+            while (!touched) {
+                touched = ts.tirqTouched() && ts.touched();
+                TS_Point p = ts.getPoint();
+
+                // minimum pressure
+                if (p.z < TOUCH_PRESSURE_MIN) {
+                    touched = false;
+                }
+            }
+        } else {
+            while (digitalRead(BTN_PIN)) {
+                bool touched = ts.tirqTouched() && ts.touched();
+                if (touched) {
+                    TS_Point p = touchToScreen(ts.getPoint());
+                    tft.drawPixel(p.x, p.y, TFT_WHITE);
+                }
+            }
+            mem_write(config);
+            return;
+        }
+
+        TS_Point p = ts.getPoint();
+        if (step == 0) {
+            config.touch_calibrate_left = p.x;
+            config.touch_calibrate_top = p.y;
+        } else if (step == 1) {
+            config.touch_calibrate_right = p.x;
+            config.touch_calibrate_bottom = p.y;
+        }
+
+        // TODO ugly, wait for proper touch release?
+        tft.fillScreen(TFT_BLACK);
+        delay(500);
+    }
+}
+
 void ui_progress(enum ui_state state) {
     int x = LCD_WIDTH / 2;
     int y = LCD_HEIGHT / 2;
@@ -363,6 +431,18 @@ void ui_progress(enum ui_state state) {
             tft.setTextDatum(MC_DATUM); // middle center
             tft.drawString("Initializing ESP-ENV", x, y - 32, fontSize);
             tft.drawString("xythobuz.de", x, y, fontSize);
+        } break;
+
+        case UI_MEMORY_READY: {
+            if ((!digitalRead(BTN_PIN)) // button held at boot
+                // ... or no calibration data in memory
+                || ((config.touch_calibrate_left == 0)
+                    && (config.touch_calibrate_right == 0)
+                    && (config.touch_calibrate_top == 0)
+                    && (config.touch_calibrate_bottom == 0))
+            ) {
+                ui_calibrate_touchscreen();
+            }
         } break;
 
         case UI_WIFI_CONNECT: {

@@ -33,6 +33,7 @@
 #include "html.h"
 #include "servers.h"
 #include "ui.h"
+#include "lora.h"
 
 unsigned long last_led_blink_time = 0;
 
@@ -90,6 +91,13 @@ void setup() {
 
     debug.println(F("Sensors"));
     initSensors();
+
+#ifdef FEATURE_LORA
+    debug.println(F("Lora"));
+    lora_init();
+#endif // FEATURE_LORA
+
+#ifndef FEATURE_DISABLE_WIFI
 
     // Build hostname string
     String hostname = SENSOR_HOSTNAME_PREFIX;
@@ -196,7 +204,7 @@ void setup() {
     ui_progress(UI_WIFI_CONNECTED);
 #endif // FEATURE_UI
 
-#endif
+#endif // ARCH
 
     debug.println(F("Seeding"));
     randomSeed(micros());
@@ -210,6 +218,8 @@ void setup() {
     debug.println(F("Servers"));
     initServers(hostname);
 
+#endif // FEATURE_DISABLE_WIFI
+
     debug.println(F("Ready! Starting..."));
 
 #ifdef FEATURE_UI
@@ -219,14 +229,21 @@ void setup() {
 }
 
 void loop() {
-    runServers();
     runSensors();
+
+#ifndef FEATURE_DISABLE_WIFI
+    runServers();
     runMQTT();
     runInflux();
+#endif // FEATURE_DISABLE_WIFI
 
 #ifdef FEATURE_UI
     ui_run();
 #endif
+
+#ifdef FEATURE_LORA
+    lora_run();
+#endif // FEATURE_LORA
 
     // blink heartbeat LED
     unsigned long time = millis();

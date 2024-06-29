@@ -22,6 +22,11 @@ void lora_oled_print(String s);
 void lora_init(void);
 void lora_run(void);
 
+#ifdef FEATURE_SML
+void lora_sml_send(double SumWh, double T1Wh, double T2Wh,
+                   double SumW, double L1W, double L2W, double L3W);
+#endif // FEATURE_SML
+
 #endif // FEATURE_LORA
 
 #endif // __ESP_ENV_LORA__

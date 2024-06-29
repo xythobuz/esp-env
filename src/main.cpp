@@ -97,15 +97,15 @@ void setup() {
     debug.println(F("Sensors"));
     initSensors();
 
-#ifdef FEATURE_SML
-    debug.println(F("SML"));
-    sml_init();
-#endif // FEATURE_SML
-
 #ifdef FEATURE_LORA
     debug.println(F("LoRa"));
     lora_init();
 #endif // FEATURE_LORA
+
+#ifdef FEATURE_SML
+    debug.println(F("SML"));
+    sml_init();
+#endif // FEATURE_SML
 
 #ifndef FEATURE_DISABLE_WIFI
 
@@ -240,6 +240,10 @@ void setup() {
 
 void loop() {
     runSensors();
+
+#ifdef FEATURE_SML
+    sml_run();
+#endif // FEATURE_SML
 
 #ifndef FEATURE_DISABLE_WIFI
     runServers();

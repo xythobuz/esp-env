@@ -24,13 +24,23 @@
 #include "DebugLog.h"
 #include "lora.h"
 
-#define OLED_BAT_INTERVAL (10UL * 1000UL) // in ms
-#define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
+// define LORA_TEST_TX to periodically transmit a test message
+//#define LORA_TEST_TX
 
+#define OLED_BAT_INTERVAL (10UL * 1000UL) // in ms
+
+#ifdef FEATURE_SML
+#define LORA_LED_BRIGHTNESS 1 // in percent, 50% brightness is plenty for this LED
+#else // FEATURE_SML
+#define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
+#endif // FEATURE_SML
+
+#ifdef LORA_TEST_TX
 // Pause between transmited packets in seconds.
 // Set to zero to only transmit a packet when pressing the user button
 // Will not exceed 1% duty cycle, even if you set a lower value.
 #define PAUSE               10
+#endif // LORA_TEST_TX
 
 // Frequency in MHz. Keep the decimal point to designate float.
 // Check your own rules and regulations to see what is legal where you are.
@@ -139,7 +149,55 @@ void lora_init(void) {
         use_lora = false;
         return;
     }
+
+    // turn on Ve external 3.3V to power Smart Meter reader
+    heltec_ve(true);
 }
+
+static void lora_tx(String data) {
+    bool tx_legal = millis() > (last_tx + minimum_pause);
+    if (!tx_legal) {
+        //debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
+        return;
+    }
+
+    debug.printf("TX [%s] ", String(counter).c_str());
+    radio.clearDio1Action();
+
+    heltec_led(LORA_LED_BRIGHTNESS);
+
+    bool success = true;
+    tx_time = millis();
+    RADIOLIB_CHECK(radio.transmit(data));
+    tx_time = millis() - tx_time;
+
+    heltec_led(0);
+
+    if (success) {
+        debug.printf("OK (%i ms)\n", (int)tx_time);
+    } else {
+        debug.println("fail");
+    }
+
+    // Maximum 1% duty cycle
+    minimum_pause = tx_time * 100;
+    last_tx = millis();
+
+    radio.setDio1Action(lora_rx);
+
+    success = true;
+    RADIOLIB_CHECK(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
+    if (!success) {
+        use_lora = false;
+    }
+}
+
+#ifdef FEATURE_SML
+void lora_sml_send(double SumWh, double T1Wh, double T2Wh,
+                   double SumW, double L1W, double L2W, double L3W) {
+
+}
+#endif // FEATURE_SML
 
 void lora_run(void) {
     heltec_loop();
@@ -164,7 +222,7 @@ void lora_run(void) {
         String data;
         RADIOLIB_CHECK(radio.readData(data));
         if (success) {
-            debug.printf("RX [%s]\n", data.c_str());
+            debug.printf("RX [%i]\n", data.length());
             debug.printf("  RSSI: %.2f dBm\n", radio.getRSSI());
             debug.printf("  SNR: %.2f dB\n", radio.getSNR());
         }
@@ -177,9 +235,9 @@ void lora_run(void) {
         }
     }
 
-    bool tx_legal = millis() > last_tx + minimum_pause;
-
+#ifdef LORA_TEST_TX
     // Transmit a packet every PAUSE seconds or when the button is pressed
+    bool tx_legal = millis() > last_tx + minimum_pause;
     if ((PAUSE && tx_legal && millis() - last_tx > (PAUSE * 1000)) || button.isSingleClick()) {
         // In case of button click, tell user to wait
         if (!tx_legal) {
@@ -187,37 +245,9 @@ void lora_run(void) {
             return;
         }
 
-        debug.printf("TX [%s] ", String(counter).c_str());
-        radio.clearDio1Action();
-
-        heltec_led(LORA_LED_BRIGHTNESS);
-
-        bool success = true;
-        tx_time = millis();
-        RADIOLIB_CHECK(radio.transmit(String(counter++).c_str()));
-        tx_time = millis() - tx_time;
-
-        heltec_led(0);
-
-        if (success) {
-            debug.printf("OK (%i ms)\n", (int)tx_time);
-        } else {
-            debug.printf("fail (%i)\n", _radiolib_status);
-        }
-
-        // Maximum 1% duty cycle
-        minimum_pause = tx_time * 100;
-        last_tx = millis();
-
-        radio.setDio1Action(lora_rx);
-
-        success = true;
-        RADIOLIB_CHECK(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
-        if (!success) {
-            use_lora = false;
-            return;
-        }
+        lora_tx(String(counter++).c_str());
     }
+#endif // LORA_TEST_TX
 }
 
 #endif // FEATURE_LORA

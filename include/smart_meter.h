@@ -17,6 +17,7 @@
 #ifdef FEATURE_SML
 
 void sml_init(void);
+void sml_run(void);
 
 #endif // FEATURE_SML
 

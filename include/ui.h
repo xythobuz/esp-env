@@ -32,6 +32,7 @@ struct ui_status {
     bool light_box;
     enum bathroom_light_states bathroom_lights;
     bool light_sink;
+    bool pc_displays;
 };
 
 extern struct ui_status ui_status;

@@ -154,7 +154,7 @@ static void draw_livingroom1(void) {
     // 5
     bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
             || ui_status.light_amp || ui_status.light_bench || ui_status.light_box
-            || ui_status.light_kitchen || ui_status.light_pc;
+            || ui_status.light_kitchen || ui_status.light_pc || ui_status.pc_displays;
     draw_button(on ? "All Lights Off" : "Wake Up Lights",
                 BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
                 BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
@@ -205,6 +205,13 @@ static void draw_bathroom(void) {
                 BTNS_OFF_X + BTN_W / 2,
                 BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
                 ui_status.bathroom_lights == BATH_LIGHT_BIG ? TFT_GREEN : TFT_RED);
+
+    // 3
+    // TODO own page?
+    draw_button("PC Displays",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                ui_status.pc_displays ? TFT_GREEN : TFT_RED);
 
     // 4
     draw_button("Bath Lights Off",
@@ -585,6 +592,8 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_sink);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_kitchen);
+            } else if (ui_page == UI_BATHROOM) {
+                INVERT_BOOL(ui_status.pc_displays);
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
@@ -602,7 +611,7 @@ void ui_run(void) {
             if (ui_page == UI_LIVINGROOM1) {
                 bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
                         || ui_status.light_amp || ui_status.light_bench || ui_status.light_box
-                        || ui_status.light_kitchen || ui_status.light_pc;
+                        || ui_status.light_kitchen || ui_status.light_pc || ui_status.pc_displays;
                 if (on) {
                     ui_status.light_amp = false;
                     ui_status.light_kitchen = false;
@@ -612,9 +621,11 @@ void ui_run(void) {
                     ui_status.light_corner = false;
                     ui_status.light_box = false;
                     ui_status.light_sink = false;
+                    ui_status.pc_displays = false;
                 } else {
                     ui_status.light_corner = true;
                     ui_status.light_sink = true;
+                    ui_status.pc_displays = true;
                 }
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_box);

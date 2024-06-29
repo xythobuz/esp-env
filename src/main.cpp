@@ -34,6 +34,7 @@
 #include "servers.h"
 #include "ui.h"
 #include "lora.h"
+#include "smart_meter.h"
 
 unsigned long last_led_blink_time = 0;
 
@@ -95,6 +96,11 @@ void setup() {
 
     debug.println(F("Sensors"));
     initSensors();
+
+#ifdef FEATURE_SML
+    debug.println(F("SML"));
+    sml_init();
+#endif // FEATURE_SML
 
 #ifdef FEATURE_LORA
     debug.println(F("LoRa"));

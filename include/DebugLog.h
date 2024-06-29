@@ -26,21 +26,24 @@ public:
 #ifdef ENABLE_DEBUGLOG
     String getBuffer(void);
 #endif // ENABLE_DEBUGLOG
-    
+
     void write(char c);
     void print(String s);
     void print(int n);
-    
+
     void println(void);
     void println(String s);
     void println(int n);
-    
+
+    size_t printf(const char * format, ...)  __attribute__ ((format (printf, 2, 3)));
+    size_t printf(const char * format, va_list args);
+
 private:
     void sendToTargets(String s);
-    
+
 #ifdef ENABLE_DEBUGLOG
     void addToBuffer(String s);
-    
+
     CircularBuffer<char, DEBUG_LOG_HISTORY_SIZE> buffer;
 #endif // ENABLE_DEBUGLOG
 };

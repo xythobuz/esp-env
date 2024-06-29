@@ -58,6 +58,10 @@ void setup() {
 
     Serial.begin(115200);
 
+#ifdef FEATURE_LORA
+    lora_oled_init();
+#endif // FEATURE_LORA
+
     debug.println(F("Initializing..."));
 
     // Blink LED for init
@@ -93,7 +97,7 @@ void setup() {
     initSensors();
 
 #ifdef FEATURE_LORA
-    debug.println(F("Lora"));
+    debug.println(F("LoRa"));
     lora_init();
 #endif // FEATURE_LORA
 

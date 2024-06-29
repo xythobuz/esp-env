@@ -16,6 +16,9 @@
 
 #ifdef FEATURE_LORA
 
+void lora_oled_init(void);
+void lora_oled_print(String s);
+
 void lora_init(void);
 void lora_run(void);
 

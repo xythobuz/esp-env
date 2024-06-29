@@ -15,6 +15,7 @@
 
 #include "config.h"
 #include "servers.h"
+#include "lora.h"
 #include "DebugLog.h"
 
 DebugLog debug;
@@ -39,6 +40,10 @@ void DebugLog::addToBuffer(String s) {
 
 void DebugLog::sendToTargets(String s) {
     Serial.print(s);
+
+#ifdef FEATURE_LORA
+    lora_oled_print(s);
+#endif // FEATURE_LORA
 
     s = "log:" + s;
     wifi_send_websocket(s);
@@ -71,4 +76,30 @@ void DebugLog::println(String s) {
 
 void DebugLog::println(int n) {
     println(String(n));
+}
+
+size_t DebugLog::printf(const char *format, va_list args) {
+    char line_buff[128];
+    int l = vsnprintf((char *)line_buff, sizeof(line_buff), format, args);
+
+    if (l < 0) {
+        // encoding error
+        l = snprintf((char *)line_buff, sizeof(line_buff), "%s: encoding error\r\n", __func__);
+    } else if (l >= (ssize_t)sizeof(line_buff)) {
+        // not enough space for string
+        l = snprintf((char *)line_buff, sizeof(line_buff), "%s: message too long (%d)\r\n", __func__, l);
+    }
+    if ((l > 0) && (l <= (int)sizeof(line_buff))) {
+        print(String(line_buff));
+    }
+
+    return (l < 0) ? 0 : l;
+}
+
+size_t DebugLog::printf(const char * format, ...) {
+    va_list args;
+    va_start(args, format);
+    size_t r = printf(format, args);
+    va_end(args);
+    return r;
 }

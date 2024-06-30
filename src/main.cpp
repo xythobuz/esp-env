@@ -133,6 +133,10 @@ void setup() {
 #endif // FEATURE_UI
     }
     debug.println(F("\nWiFi connected!"));
+
+    debug.printf("IP: %s\n", WiFi.localIP().toString().c_str());
+    debug.printf("Hostname: %s\n", hostname.c_str());
+
 #ifdef FEATURE_UI
     ui_progress(UI_WIFI_CONNECTED);
 #endif // FEATURE_UI
@@ -183,6 +187,10 @@ void setup() {
 #endif // FEATURE_UI
     }
     debug.println(F("\nWiFi connected!"));
+
+    debug.printf("IP: %s\n", WiFi.localIP().toString().c_str());
+    debug.printf("Hostname: %s\n", hostname.c_str());
+
 #ifdef FEATURE_UI
     ui_progress(UI_WIFI_CONNECTED);
 #endif // FEATURE_UI

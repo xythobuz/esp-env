@@ -29,21 +29,22 @@ class SimpleUpdater {
 public:
     SimpleUpdater(String _uri = String("/update"));
     void setup(UPDATE_WEB_SERVER *_server);
-    
+    void run(void);
+
 private:
 
 #if defined(ARDUINO_ARCH_ESP8266)
-    
+
     ESP8266HTTPUpdateServer updateServer;
 
 #elif defined(ARDUINO_ARCH_ESP32)
-    
+
     void get(void);
     void postResult(void);
     void postUpload(void);
-    
+
 #endif
-    
+
     String uri;
     UPDATE_WEB_SERVER *server;
 };

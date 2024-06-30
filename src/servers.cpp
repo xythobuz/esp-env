@@ -207,10 +207,11 @@ static void http_server() {
 static void handleServers() {
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
     server.handleClient();
+    updater.run();
 #else
     http_server();
 #endif
-    
+
 #if defined(ARDUINO_ARCH_ESP8266)
     MDNS.update();
 #endif

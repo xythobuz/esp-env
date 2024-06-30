@@ -22,6 +22,7 @@
 
 #include "config.h"
 #include "DebugLog.h"
+#include "influx.h"
 #include "lora.h"
 
 // define LORA_TEST_TX to periodically transmit a test message
@@ -31,7 +32,8 @@
 
 #ifdef FEATURE_SML
 #define LORA_LED_BRIGHTNESS 1 // in percent, 50% brightness is plenty for this LED
-#define OLED_BAT_INTERVAL (10UL * 1000UL) // in ms
+#define OLED_BAT_INTERVAL (2UL * 60UL * 1000UL) // in ms
+#define FORCE_BAT_SEND_AT_OLED_INTERVAL
 #else // FEATURE_SML
 #define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
 #endif // FEATURE_SML
@@ -135,7 +137,7 @@ static bool lora_tx(uint8_t *data, size_t len) {
         return false;
     }
 
-    debug.printf("TX [%lu] ", len);
+    debug.printf("TX [%d] (%lu) ", data[0], len);
     radio.clearDio1Action();
 
     heltec_led(LORA_LED_BRIGHTNESS);
@@ -292,9 +294,13 @@ void lora_run(void) {
 
 #ifdef OLED_BAT_INTERVAL
     unsigned long time = millis();
-    if ((time - last_bat_time) >= OLED_BAT_INTERVAL) {
+    if (((time - last_bat_time) >= OLED_BAT_INTERVAL) || (last_bat_time == 0)) {
         last_bat_time = time;
         print_bat();
+
+#ifdef FORCE_BAT_SEND_AT_OLED_INTERVAL
+        lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), 0);
+#endif // FORCE_BAT_SEND_AT_OLED_INTERVAL
     }
 #endif
 
@@ -314,7 +320,7 @@ void lora_run(void) {
             debug.printf("  RSSI: %.2f dBm\n", radio.getRSSI());
             debug.printf("  SNR: %.2f dB\n", radio.getSNR());
 
-#ifdef DEBUG_LORA_RX_HEXDUMP
+#if defined(DEBUG_LORA_RX_HEXDUMP) || (!defined(ENABLE_INFLUXDB_LOGGING))
             for (int i = 0; i < sizeof(data); i++) {
                 debug.printf("%02X", data[i]);
                 if (i < (sizeof(data) - 1)) {
@@ -325,6 +331,7 @@ void lora_run(void) {
             }
 #endif
 
+#ifdef ENABLE_INFLUXDB_LOGGING
             if (data[0] == LORA_SML_BAT_V) {
                 float vbat = NAN;
                 int percent = -1;
@@ -332,14 +339,55 @@ void lora_run(void) {
                 memcpy(&percent, data + 1 + sizeof(float), sizeof(int));
                 debug.printf("  Vbat: %.2f (%d%%)\n", vbat, percent);
 
-                // TODO payload to influxdb
+                writeSensorDatum("environment", "sml", SENSOR_LOCATION, "vbat", vbat);
+                writeSensorDatum("environment", "sml", SENSOR_LOCATION, "percent", percent);
             } else {
                 double val = NAN;
                 memcpy(&val, data + 1, sizeof(double));
                 debug.printf("  Value: %.2f\n", val);
 
-                // TODO payload to influxdb
+                String key;
+                switch (data[0]) {
+                    case LORA_SML_HELLO:
+                        key = "hello";
+                        break;
+
+                    case LORA_SML_SUM_WH:
+                        key = "Sum_Wh";
+                        break;
+
+                    case LORA_SML_T1_WH:
+                        key = "T1_Wh";
+                        break;
+
+                    case LORA_SML_T2_WH:
+                        key = "T2_Wh";
+                        break;
+
+                    case LORA_SML_SUM_W:
+                        key = "Sum_W";
+                        break;
+
+                    case LORA_SML_L1_W:
+                        key = "L1_W";
+                        break;
+
+                    case LORA_SML_L2_W:
+                        key = "L2_W";
+                        break;
+
+                    case LORA_SML_L3_W:
+                        key = "L3_W";
+                        break;
+
+                    default:
+                        key = "unknown";
+                        break;
+                }
+
+                writeSensorDatum("environment", "sml", SENSOR_LOCATION, key, val);
             }
+#endif // ENABLE_INFLUXDB_LOGGING
         }
 
         success = true;

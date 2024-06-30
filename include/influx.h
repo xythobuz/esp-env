@@ -18,4 +18,6 @@ void initInflux();
 void runInflux();
 void writeDatabase();
 
+void writeSensorDatum(String measurement, String sensor, String placement, String key, double value);
+
 #endif // __INFLUX_H__

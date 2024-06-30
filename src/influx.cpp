@@ -112,6 +112,17 @@ static void addTagsRelais(InfluxData &measurement, String id, String name) {
 }
 #endif
 
+void writeSensorDatum(String measurement, String sensor, String placement, String key, double value) {
+    InfluxData ms(measurement);
+    addTagsSensor(ms, sensor, placement);
+
+    ms.addValue(key, value);
+
+    debug.printf("Writing %s %s %s %s %.2lf\n", measurement.c_str(), sensor.c_str(), placement.c_str(), key.c_str(), value);
+    writeMeasurement(ms);
+    debug.println(F("Done!"));
+}
+
 void writeDatabase() {
 #ifdef ENABLE_BME280
 

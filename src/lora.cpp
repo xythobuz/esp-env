@@ -115,6 +115,15 @@ static void print_bat(void) {
     debug.printf("Vbat: %.2fV (%d%%)\n", vbat, heltec_battery_percent(vbat));
 }
 
+double lora_get_mangled_bat(void) {
+    uint8_t data[sizeof(double)];
+    float vbat = heltec_vbat();
+    int percent = heltec_battery_percent(vbat);
+    memcpy(data, &vbat, sizeof(float));
+    memcpy(data + sizeof(float), &percent, sizeof(int));
+    return *((double *)data);
+}
+
 static void lora_rx(void) {
     rx_flag = true;
 }
@@ -305,10 +314,6 @@ void lora_run(void) {
             debug.printf("  RSSI: %.2f dBm\n", radio.getRSSI());
             debug.printf("  SNR: %.2f dB\n", radio.getSNR());
 
-            double val = NAN;
-            memcpy(&val, data + 1, sizeof(double));
-            debug.printf("  Value: %.2f\n", val);
-
 #ifdef DEBUG_LORA_RX_HEXDUMP
             for (int i = 0; i < sizeof(data); i++) {
                 debug.printf("%02X", data[i]);
@@ -320,7 +325,21 @@ void lora_run(void) {
             }
 #endif
 
-            // TODO payload to influxdb
+            if (data[0] == LORA_SML_BAT_V) {
+                float vbat = NAN;
+                int percent = -1;
+                memcpy(&vbat, data + 1, sizeof(float));
+                memcpy(&percent, data + 1 + sizeof(float), sizeof(int));
+                debug.printf("  Vbat: %.2f (%d%%)\n", vbat, percent);
+
+                // TODO payload to influxdb
+            } else {
+                double val = NAN;
+                memcpy(&val, data + 1, sizeof(double));
+                debug.printf("  Value: %.2f\n", val);
+
+                // TODO payload to influxdb
+            }
         }
 
         success = true;
@@ -350,7 +369,6 @@ void lora_run(void) {
         lora_tx(s.c_str(), s.length());
     }
 #else // LORA_TEST_TX
-#ifdef FEATURE_SML
     if (button.isSingleClick()) {
         // In case of button click, tell user to wait
         if (!tx_legal) {
@@ -358,9 +376,16 @@ void lora_run(void) {
             return;
         }
 
-        lora_sml_send(LORA_SML_HELLO, -23.42, 0);
-    }
+#ifdef FEATURE_SML
+        lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), 0);
+#else // FEATURE_SML
+        uint8_t data[sizeof(double) + 1];
+        data[0] = LORA_SML_HELLO;
+        double tmp = -23.42;
+        memcpy(data + 1, &tmp, sizeof(double));
+        lora_tx(data, sizeof(data));
 #endif // FEATURE_SML
+    }
 #endif // LORA_TEST_TX
 }
 

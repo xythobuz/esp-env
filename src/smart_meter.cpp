@@ -162,6 +162,10 @@ void sml_run(void) {
 #endif // FEATURE_LORA
         }
 
+#ifdef FEATURE_LORA
+        lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), counter);
+#endif // FEATURE_LORA
+
         debug.println();
     }
 }

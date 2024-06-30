@@ -22,8 +22,6 @@ void lora_oled_print(String s);
 void lora_init(void);
 void lora_run(void);
 
-#ifdef FEATURE_SML
-
 enum lora_sml_type {
     LORA_SML_HELLO = 0,
     LORA_SML_SUM_WH,
@@ -38,9 +36,11 @@ enum lora_sml_type {
     LORA_SML_NUM_MESSAGES
 };
 
+#ifdef FEATURE_SML
 void lora_sml_send(enum lora_sml_type msg, double value, unsigned long counter);
-
 #endif // FEATURE_SML
+
+double lora_get_mangled_bat(void);
 
 #endif // FEATURE_LORA
 

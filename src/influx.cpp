@@ -118,7 +118,16 @@ void writeSensorDatum(String measurement, String sensor, String placement, Strin
 
     ms.addValue(key, value);
 
-    debug.printf("Writing %s %s %s %s %.2lf\n", measurement.c_str(), sensor.c_str(), placement.c_str(), key.c_str(), value);
+    debug.print("Writing ");
+    debug.print(measurement);
+    debug.print(" ");
+    debug.print(sensor);
+    debug.print(" ");
+    debug.print(placement);
+    debug.print(" ");
+    debug.print(key);
+    debug.print(" ");
+    debug.printf("%.2lf\n", value);
     writeMeasurement(ms);
     debug.println(F("Done!"));
 }

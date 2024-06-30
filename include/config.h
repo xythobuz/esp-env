@@ -42,6 +42,10 @@
 #define INFLUXDB_DATABASE "roomsensorsdiy"
 //#define INFLUX_MAX_ERRORS_RESET 10
 
+// LoRa SML Bridge "Crypto"
+// needs to be sizeof(struct lora_sml_msg) bytes long
+#define LORA_XOR_KEY "_SUPER_SECRET_KEY_HERE_"
+
 // all given in milliseconds
 #define SERVER_HANDLE_INTERVAL 10
 #define SENSOR_HANDLE_INTERVAL (5 * 1000)

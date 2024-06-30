@@ -36,6 +36,12 @@ enum lora_sml_type {
     LORA_SML_NUM_MESSAGES
 };
 
+struct lora_sml_msg {
+    uint8_t type; // enum lora_sml_type
+    double value;
+    uint32_t checksum;
+} __attribute__ ((packed));
+
 #ifdef FEATURE_SML
 void lora_sml_send(enum lora_sml_type msg, double value, unsigned long counter);
 #endif // FEATURE_SML

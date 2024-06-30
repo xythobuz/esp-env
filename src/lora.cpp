@@ -25,9 +25,6 @@
 #include "influx.h"
 #include "lora.h"
 
-// define LORA_TEST_TX to periodically transmit a test message
-//#define LORA_TEST_TX
-
 //#define DEBUG_LORA_RX_HEXDUMP
 
 #ifdef FEATURE_SML
@@ -37,13 +34,6 @@
 #else // FEATURE_SML
 #define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
 #endif // FEATURE_SML
-
-#ifdef LORA_TEST_TX
-// Pause between transmited packets in seconds.
-// Set to zero to only transmit a packet when pressing the user button
-// Will not exceed 1% duty cycle, even if you set a lower value.
-#define PAUSE               10
-#endif // LORA_TEST_TX
 
 // Frequency in MHz. Keep the decimal point to designate float.
 // Check your own rules and regulations to see what is legal where you are.
@@ -100,10 +90,6 @@ static struct sml_cache cache[LORA_SML_NUM_MESSAGES];
 
 #endif // FEATURE_SML
 
-#ifdef LORA_TEST_TX
-static unsigned long test_counter = 0;
-#endif // LORA_TEST_TX
-
 void lora_oled_init(void) {
     heltec_setup();
 }
@@ -126,16 +112,44 @@ double lora_get_mangled_bat(void) {
     return *((double *)data);
 }
 
+// adapted from "Hacker's Delight"
+static uint32_t calc_checksum(const uint8_t *data, size_t len) {
+    uint32_t c = 0xFFFFFFFF;
+    for (size_t i = 0; i < len; i++) {
+        c ^= data[i];
+        for (size_t j = 0; j < 8; j++) {
+            uint32_t mask = -(c & 1);
+            c = (c >> 1) ^ (0xEDB88320 & mask);
+        }
+    }
+
+    return ~c;
+}
+
 static void lora_rx(void) {
     rx_flag = true;
 }
 
-static bool lora_tx(uint8_t *data, size_t len) {
+static bool lora_tx(enum lora_sml_type type, double value) {
     bool tx_legal = millis() > (last_tx + minimum_pause);
     if (!tx_legal) {
         //debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
         return false;
     }
+
+    struct lora_sml_msg msg;
+    msg.type = type;
+    msg.value = value;
+    msg.checksum = calc_checksum((uint8_t *)&msg, offsetof(struct lora_sml_msg, checksum));
+
+    uint8_t *data = (uint8_t *)&msg;
+    const size_t len = sizeof(struct lora_sml_msg);
+
+#ifdef LORA_XOR_KEY
+    for (size_t i = 0; i < len; i++) {
+        data[i] ^= LORA_XOR_KEY[i];
+    }
+#endif
 
     debug.printf("TX [%d] (%lu) ", data[0], len);
     radio.clearDio1Action();
@@ -174,11 +188,7 @@ static bool lora_tx(uint8_t *data, size_t len) {
 
 #ifdef FEATURE_SML
 static bool lora_sml_cache_send(enum lora_sml_type msg) {
-    const size_t len = sizeof(double) + 1;
-    uint8_t data[len];
-    data[0] = (uint8_t)msg;
-    memcpy(data + 1, &cache[msg].value, sizeof(double));
-    return lora_tx(data, len);
+    return lora_tx(msg, cache[msg].value);
 }
 
 static void lora_sml_handle_cache(void) {
@@ -313,16 +323,22 @@ void lora_run(void) {
         rx_flag = false;
 
         bool success = true;
-        uint8_t data[sizeof(double) + 1];
+        uint8_t data[sizeof(struct lora_sml_msg)];
         RADIOLIB_CHECK(radio.readData(data, sizeof(data)));
         if (success) {
+#ifdef LORA_XOR_KEY
+            for (size_t i = 0; i < sizeof(data); i++) {
+                data[i] ^= LORA_XOR_KEY[i];
+            }
+#endif
+
             debug.printf("RX [%i]\n", data[0]);
             debug.printf("  RSSI: %.2f dBm\n", radio.getRSSI());
             debug.printf("  SNR: %.2f dB\n", radio.getSNR());
 
 #if defined(DEBUG_LORA_RX_HEXDUMP) || (!defined(ENABLE_INFLUXDB_LOGGING))
             for (int i = 0; i < sizeof(data); i++) {
-                debug.printf("%02X", data[i]);
+                debug.printf("  %02X", data[i]);
                 if (i < (sizeof(data) - 1)) {
                     debug.print(" ");
                 } else {
@@ -331,63 +347,70 @@ void lora_run(void) {
             }
 #endif
 
-#ifdef ENABLE_INFLUXDB_LOGGING
-            if (data[0] == LORA_SML_BAT_V) {
-                float vbat = NAN;
-                int percent = -1;
-                memcpy(&vbat, data + 1, sizeof(float));
-                memcpy(&percent, data + 1 + sizeof(float), sizeof(int));
-                debug.printf("  Vbat: %.2f (%d%%)\n", vbat, percent);
-
-                writeSensorDatum("environment", "sml", SENSOR_LOCATION, "vbat", vbat);
-                writeSensorDatum("environment", "sml", SENSOR_LOCATION, "percent", percent);
+            struct lora_sml_msg *msg = (struct lora_sml_msg *)data;
+            uint32_t checksum = calc_checksum(data, offsetof(struct lora_sml_msg, checksum));
+            if (checksum != msg->checksum) {
+                debug.printf("  CRC: 0x%08X != 0x%08X\n", msg->checksum, checksum);
             } else {
-                double val = NAN;
-                memcpy(&val, data + 1, sizeof(double));
-                debug.printf("  Value: %.2f\n", val);
+                debug.printf("  CRC: OK 0x%08X\n", checksum);
 
-                String key;
-                switch (data[0]) {
-                    case LORA_SML_HELLO:
-                        key = "hello";
-                        break;
+#ifdef ENABLE_INFLUXDB_LOGGING
+                if (data[0] == LORA_SML_BAT_V) {
+                    // extract mangled float and int from double
+                    float vbat = NAN;
+                    int percent = -1;
+                    memcpy(&vbat, data + offsetof(struct lora_sml_msg, value), sizeof(float));
+                    memcpy(&percent, data + offsetof(struct lora_sml_msg, value) + sizeof(float), sizeof(int));
+                    debug.printf("  Vbat: %.2f (%d%%)\n", vbat, percent);
 
-                    case LORA_SML_SUM_WH:
-                        key = "Sum_Wh";
-                        break;
+                    writeSensorDatum("environment", "sml", SENSOR_LOCATION, "vbat", vbat);
+                    writeSensorDatum("environment", "sml", SENSOR_LOCATION, "percent", percent);
+                } else {
+                    debug.printf("  Value: %.2f\n", msg->value);
 
-                    case LORA_SML_T1_WH:
-                        key = "T1_Wh";
-                        break;
+                    String key;
+                    switch (data[0]) {
+                        case LORA_SML_HELLO:
+                            key = "hello";
+                            break;
 
-                    case LORA_SML_T2_WH:
-                        key = "T2_Wh";
-                        break;
+                        case LORA_SML_SUM_WH:
+                            key = "Sum_Wh";
+                            break;
 
-                    case LORA_SML_SUM_W:
-                        key = "Sum_W";
-                        break;
+                        case LORA_SML_T1_WH:
+                            key = "T1_Wh";
+                            break;
 
-                    case LORA_SML_L1_W:
-                        key = "L1_W";
-                        break;
+                        case LORA_SML_T2_WH:
+                            key = "T2_Wh";
+                            break;
 
-                    case LORA_SML_L2_W:
-                        key = "L2_W";
-                        break;
+                        case LORA_SML_SUM_W:
+                            key = "Sum_W";
+                            break;
 
-                    case LORA_SML_L3_W:
-                        key = "L3_W";
-                        break;
+                        case LORA_SML_L1_W:
+                            key = "L1_W";
+                            break;
 
-                    default:
-                        key = "unknown";
-                        break;
+                        case LORA_SML_L2_W:
+                            key = "L2_W";
+                            break;
+
+                        case LORA_SML_L3_W:
+                            key = "L3_W";
+                            break;
+
+                        default:
+                            key = "unknown";
+                            break;
+                    }
+
+                    writeSensorDatum("environment", "sml", SENSOR_LOCATION, key, msg->value);
                 }
-
-                writeSensorDatum("environment", "sml", SENSOR_LOCATION, key, val);
-            }
 #endif // ENABLE_INFLUXDB_LOGGING
+            }
         }
 
         success = true;
@@ -402,39 +425,21 @@ void lora_run(void) {
     lora_sml_handle_cache();
 #endif // FEATURE_SML
 
-    bool tx_legal = millis() > last_tx + minimum_pause;
-
-#ifdef LORA_TEST_TX
-    // Transmit a packet every PAUSE seconds or when the button is pressed
-    if ((PAUSE && tx_legal && millis() - last_tx > (PAUSE * 1000)) || button.isSingleClick()) {
-        // In case of button click, tell user to wait
-        if (!tx_legal) {
-            debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
-            return;
-        }
-
-        String s = String(test_counter++);
-        lora_tx(s.c_str(), s.length());
-    }
-#else // LORA_TEST_TX
     if (button.isSingleClick()) {
         // In case of button click, tell user to wait
+        bool tx_legal = millis() > last_tx + minimum_pause;
         if (!tx_legal) {
             debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
             return;
         }
 
+        // send test hello message on lorarx target, or battery state on loratx target
 #ifdef FEATURE_SML
         lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), 0);
 #else // FEATURE_SML
-        uint8_t data[sizeof(double) + 1];
-        data[0] = LORA_SML_HELLO;
-        double tmp = -23.42;
-        memcpy(data + 1, &tmp, sizeof(double));
-        lora_tx(data, sizeof(data));
+        lora_tx(LORA_SML_HELLO, -23.42);
 #endif // FEATURE_SML
     }
-#endif // LORA_TEST_TX
 }
 
 #endif // FEATURE_LORA

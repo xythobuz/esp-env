@@ -295,7 +295,7 @@ void lora_init(void) {
     heltec_ve(true);
 
     // send hello msg after boot
-    lora_sml_send(LORA_SML_HELLO, -42.23, 0);
+    lora_sml_send(LORA_SML_HELLO, heltec_temperature(), 0);
 #endif // FEATURE_SML
 }
 
@@ -437,7 +437,7 @@ void lora_run(void) {
 #ifdef FEATURE_SML
         lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), 0);
 #else // FEATURE_SML
-        lora_tx(LORA_SML_HELLO, -23.42);
+        lora_tx(LORA_SML_HELLO, heltec_temperature());
 #endif // FEATURE_SML
     }
 }

@@ -27,10 +27,11 @@
 // define LORA_TEST_TX to periodically transmit a test message
 //#define LORA_TEST_TX
 
-#define OLED_BAT_INTERVAL (10UL * 1000UL) // in ms
+//#define DEBUG_LORA_RX_HEXDUMP
 
 #ifdef FEATURE_SML
 #define LORA_LED_BRIGHTNESS 1 // in percent, 50% brightness is plenty for this LED
+#define OLED_BAT_INTERVAL (10UL * 1000UL) // in ms
 #else // FEATURE_SML
 #define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
 #endif // FEATURE_SML
@@ -82,8 +83,24 @@
 
 static unsigned long last_bat_time = 0;
 static bool use_lora = true;
-static unsigned long last_tx = 0, counter = 0, tx_time = 0, minimum_pause = 0;
+static unsigned long last_tx = 0, tx_time = 0, minimum_pause = 0;
 static volatile bool rx_flag = false;
+
+#ifdef FEATURE_SML
+
+struct sml_cache {
+    double value, next_value;
+    bool ready, has_next;
+    unsigned long counter, next_counter;
+};
+
+static struct sml_cache cache[LORA_SML_NUM_MESSAGES];
+
+#endif // FEATURE_SML
+
+#ifdef LORA_TEST_TX
+static unsigned long test_counter = 0;
+#endif // LORA_TEST_TX
 
 void lora_oled_init(void) {
     heltec_setup();
@@ -102,7 +119,109 @@ static void lora_rx(void) {
     rx_flag = true;
 }
 
+static bool lora_tx(uint8_t *data, size_t len) {
+    bool tx_legal = millis() > (last_tx + minimum_pause);
+    if (!tx_legal) {
+        //debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
+        return false;
+    }
+
+    debug.printf("TX [%lu] ", len);
+    radio.clearDio1Action();
+
+    heltec_led(LORA_LED_BRIGHTNESS);
+
+    bool success = true;
+    tx_time = millis();
+    RADIOLIB_CHECK(radio.transmit(data, len));
+    tx_time = millis() - tx_time;
+
+    heltec_led(0);
+
+    bool r = true;
+    if (success) {
+        debug.printf("OK (%i ms)\n", (int)tx_time);
+    } else {
+        debug.println("fail");
+        r = false;
+    }
+
+    // Maximum 1% duty cycle
+    minimum_pause = tx_time * 100;
+    last_tx = millis();
+
+    radio.setDio1Action(lora_rx);
+
+    success = true;
+    RADIOLIB_CHECK(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
+    if (!success) {
+        use_lora = false;
+    }
+
+    return r;
+}
+
+#ifdef FEATURE_SML
+static bool lora_sml_cache_send(enum lora_sml_type msg) {
+    const size_t len = sizeof(double) + 1;
+    uint8_t data[len];
+    data[0] = (uint8_t)msg;
+    memcpy(data + 1, &cache[msg].value, sizeof(double));
+    return lora_tx(data, len);
+}
+
+static void lora_sml_handle_cache(void) {
+    // find smallest message counter that is ready
+    unsigned long min_counter = ULONG_MAX;
+    for (int i = 0; i < LORA_SML_NUM_MESSAGES; i++) {
+        if (cache[i].ready && (cache[i].counter < min_counter)) {
+            min_counter = cache[i].counter;
+        }
+    }
+
+    // try to transmit next value with lowest counter
+    for (int i = 0; i < LORA_SML_NUM_MESSAGES; i++) {
+        if (cache[i].ready && (cache[i].counter == min_counter)) {
+            if (lora_sml_cache_send((enum lora_sml_type)i)) {
+                if (cache[i].has_next) {
+                    cache[i].has_next = false;
+                    cache[i].value = cache[i].next_value;
+                    cache[i].counter = cache[i].next_counter;
+                } else {
+                    cache[i].ready = false;
+                }
+            }
+        }
+    }
+}
+
+void lora_sml_send(enum lora_sml_type msg, double value, unsigned long counter) {
+    if (cache[msg].ready) {
+        // still waiting to be transmitted, so cache for next cycle
+        cache[msg].has_next = true;
+        cache[msg].next_value = value;
+        cache[msg].next_counter = counter;
+    } else {
+        // cache as current value, for transmission in this cycle
+        cache[msg].ready = true;
+        cache[msg].value = value;
+        cache[msg].counter = counter;
+    }
+}
+#endif // FEATURE_SML
+
 void lora_init(void) {
+#ifdef FEATURE_SML
+    for (int i = 0; i < LORA_SML_NUM_MESSAGES; i++) {
+        cache[i].value = NAN;
+        cache[i].next_value = NAN;
+        cache[i].ready = false;
+        cache[i].has_next = false;
+        cache[i].counter = 0;
+        cache[i].next_counter = 0;
+    }
+#endif // FEATURE_SML
+
     print_bat();
 
     bool success = true;
@@ -150,54 +269,14 @@ void lora_init(void) {
         return;
     }
 
+#ifdef FEATURE_SML
     // turn on Ve external 3.3V to power Smart Meter reader
     heltec_ve(true);
-}
 
-static void lora_tx(String data) {
-    bool tx_legal = millis() > (last_tx + minimum_pause);
-    if (!tx_legal) {
-        //debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
-        return;
-    }
-
-    debug.printf("TX [%s] ", String(counter).c_str());
-    radio.clearDio1Action();
-
-    heltec_led(LORA_LED_BRIGHTNESS);
-
-    bool success = true;
-    tx_time = millis();
-    RADIOLIB_CHECK(radio.transmit(data));
-    tx_time = millis() - tx_time;
-
-    heltec_led(0);
-
-    if (success) {
-        debug.printf("OK (%i ms)\n", (int)tx_time);
-    } else {
-        debug.println("fail");
-    }
-
-    // Maximum 1% duty cycle
-    minimum_pause = tx_time * 100;
-    last_tx = millis();
-
-    radio.setDio1Action(lora_rx);
-
-    success = true;
-    RADIOLIB_CHECK(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
-    if (!success) {
-        use_lora = false;
-    }
-}
-
-#ifdef FEATURE_SML
-void lora_sml_send(double SumWh, double T1Wh, double T2Wh,
-                   double SumW, double L1W, double L2W, double L3W) {
-
-}
+    // send hello msg after boot
+    lora_sml_send(LORA_SML_HELLO, -42.23, 0);
 #endif // FEATURE_SML
+}
 
 void lora_run(void) {
     heltec_loop();
@@ -219,12 +298,29 @@ void lora_run(void) {
         rx_flag = false;
 
         bool success = true;
-        String data;
-        RADIOLIB_CHECK(radio.readData(data));
+        uint8_t data[sizeof(double) + 1];
+        RADIOLIB_CHECK(radio.readData(data, sizeof(data)));
         if (success) {
-            debug.printf("RX [%i]\n", data.length());
+            debug.printf("RX [%i]\n", data[0]);
             debug.printf("  RSSI: %.2f dBm\n", radio.getRSSI());
             debug.printf("  SNR: %.2f dB\n", radio.getSNR());
+
+            double val = NAN;
+            memcpy(&val, data + 1, sizeof(double));
+            debug.printf("  Value: %.2f\n", val);
+
+#ifdef DEBUG_LORA_RX_HEXDUMP
+            for (int i = 0; i < sizeof(data); i++) {
+                debug.printf("%02X", data[i]);
+                if (i < (sizeof(data) - 1)) {
+                    debug.print(" ");
+                } else {
+                    debug.println();
+                }
+            }
+#endif
+
+            // TODO payload to influxdb
         }
 
         success = true;
@@ -235,9 +331,14 @@ void lora_run(void) {
         }
     }
 
+#ifdef FEATURE_SML
+    lora_sml_handle_cache();
+#endif // FEATURE_SML
+
+    bool tx_legal = millis() > last_tx + minimum_pause;
+
 #ifdef LORA_TEST_TX
     // Transmit a packet every PAUSE seconds or when the button is pressed
-    bool tx_legal = millis() > last_tx + minimum_pause;
     if ((PAUSE && tx_legal && millis() - last_tx > (PAUSE * 1000)) || button.isSingleClick()) {
         // In case of button click, tell user to wait
         if (!tx_legal) {
@@ -245,8 +346,21 @@ void lora_run(void) {
             return;
         }
 
-        lora_tx(String(counter++).c_str());
+        String s = String(test_counter++);
+        lora_tx(s.c_str(), s.length());
     }
+#else // LORA_TEST_TX
+#ifdef FEATURE_SML
+    if (button.isSingleClick()) {
+        // In case of button click, tell user to wait
+        if (!tx_legal) {
+            debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
+            return;
+        }
+
+        lora_sml_send(LORA_SML_HELLO, -23.42, 0);
+    }
+#endif // FEATURE_SML
 #endif // LORA_TEST_TX
 }
 

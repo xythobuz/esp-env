@@ -22,10 +22,13 @@
 #include "lora.h"
 #include "smart_meter.h"
 
-#define SML_TX 47
-#define SML_RX 48
+#define SML_TX 33
+#define SML_RX 34
+#define SML_BAUD 9600
+#define SML_PARAM SWSERIAL_8N1
 
 static EspSoftwareSerial::UART port1, port2;
+static unsigned long counter = 0;
 
 static double SumWh = NAN, T1Wh = NAN, T2Wh = NAN;
 static double SumW = NAN, L1W = NAN, L2W = NAN, L3W = NAN;
@@ -86,8 +89,8 @@ static OBISHandler handlers[] = {
 void sml_init(void) {
     init_vars();
 
-    port1.begin(9600, SWSERIAL_8N1, SML_RX, -1, false);
-    port2.begin(9600, SWSERIAL_8N1, SML_TX, -1, false);
+    port1.begin(SML_BAUD, SML_PARAM, SML_RX, -1, false);
+    port2.begin(SML_BAUD, SML_PARAM, SML_TX, -1, false);
 }
 
 void sml_run(void) {
@@ -100,6 +103,7 @@ void sml_run(void) {
 
     if (s == SML_START) {
         init_vars();
+        counter++;
     } else if (s == SML_LISTEND) {
         for (unsigned int i = 0; i < (sizeof(handlers) / sizeof(handlers[0])); i++) {
             if (smlOBISCheck(handlers[i].OBIS)) {
@@ -109,32 +113,56 @@ void sml_run(void) {
     } else if (s == SML_FINAL) {
         debug.println("SML Reading:");
 
-        if (!isnan(SumWh))
+        if (!isnan(SumWh)) {
             debug.printf("Sum: %14.3lf Wh\n", SumWh);
+#ifdef FEATURE_LORA
+            lora_sml_send(LORA_SML_SUM_WH, SumWh, counter);
+#endif // FEATURE_LORA
+        }
 
-        if (!isnan(T1Wh))
+        if (!isnan(T1Wh)) {
             debug.printf(" T1: %14.3lf Wh\n", T1Wh);
+#ifdef FEATURE_LORA
+            lora_sml_send(LORA_SML_T1_WH, T1Wh, counter);
+#endif // FEATURE_LORA
+        }
 
-        if (!isnan(T2Wh))
+        if (!isnan(T2Wh)) {
             debug.printf(" T2: %14.3lf Wh\n", T2Wh);
+#ifdef FEATURE_LORA
+            lora_sml_send(LORA_SML_T2_WH, T2Wh, counter);
+#endif // FEATURE_LORA
+        }
 
-        if (!isnan(SumW))
+        if (!isnan(SumW)) {
             debug.printf("Sum: %14.3lf W\n", SumW);
+#ifdef FEATURE_LORA
+            lora_sml_send(LORA_SML_SUM_W, SumW, counter);
+#endif // FEATURE_LORA
+        }
 
-        if (!isnan(L1W))
+        if (!isnan(L1W)) {
             debug.printf(" L1: %14.3lf W\n", L1W);
+#ifdef FEATURE_LORA
+            lora_sml_send(LORA_SML_L1_W, L1W, counter);
+#endif // FEATURE_LORA
+        }
 
-        if (!isnan(L2W))
+        if (!isnan(L2W)) {
             debug.printf(" L2: %14.3lf W\n", L2W);
+#ifdef FEATURE_LORA
+            lora_sml_send(LORA_SML_L2_W, L2W, counter);
+#endif // FEATURE_LORA
+        }
 
-        if (!isnan(L3W))
+        if (!isnan(L3W)) {
             debug.printf(" L3: %14.3lf W\n", L3W);
+#ifdef FEATURE_LORA
+            lora_sml_send(LORA_SML_L3_W, L3W, counter);
+#endif // FEATURE_LORA
+        }
 
         debug.println();
-
-#ifdef FEATURE_LORA
-        lora_sml_send(SumWh, T1Wh, T2Wh, SumW, L1W, L2W, L3W);
-#endif // FEATURE_LORA
     }
 }
 

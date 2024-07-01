@@ -33,6 +33,10 @@ static unsigned long counter = 0;
 static double SumWh = NAN, T1Wh = NAN, T2Wh = NAN;
 static double SumW = NAN, L1W = NAN, L2W = NAN, L3W = NAN;
 
+bool sml_data_received(void) {
+    return counter > 0;
+}
+
 static void EnergySum(void) {
     smlOBISWh(SumWh);
 }

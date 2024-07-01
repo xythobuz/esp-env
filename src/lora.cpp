@@ -16,13 +16,17 @@
 #include <Arduino.h>
 
 // Turns the 'PRG' button into the power button, long press is off
+// this also increases deep sleep power usage!
+#ifndef FEATURE_SML
 #define HELTEC_POWER_BUTTON
+#endif // ! FEATURE_SML
 
 #include <heltec_unofficial.h>
 
 #include "config.h"
 #include "DebugLog.h"
 #include "influx.h"
+#include "smart_meter.h"
 #include "lora.h"
 
 //#define DEBUG_LORA_RX_HEXDUMP
@@ -31,6 +35,9 @@
 #define LORA_LED_BRIGHTNESS 0 // in percent, 50% brightness is plenty for this LED
 #define OLED_BAT_INTERVAL (2UL * 60UL * 1000UL) // in ms
 #define FORCE_BAT_SEND_AT_OLED_INTERVAL
+#define DEEP_SLEEP_TIMEOUT_MS (1UL * 60UL * 1000UL) // gather data for 1min
+#define DEEP_SLEEP_ABORT_NO_DATA_MS (20UL * 1000UL) // if no data appears, abort after 20s
+#define DEEP_SLEEP_DURATION_S (5UL * 60UL) // then sleep for 5min
 #else // FEATURE_SML
 #define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
 #endif // FEATURE_SML
@@ -306,8 +313,9 @@ void lora_init(void) {
 void lora_run(void) {
     heltec_loop();
 
-#ifdef OLED_BAT_INTERVAL
     unsigned long time = millis();
+
+#ifdef OLED_BAT_INTERVAL
     if (((time - last_bat_time) >= OLED_BAT_INTERVAL) || (last_bat_time == 0)) {
         last_bat_time = time;
         print_bat();
@@ -316,7 +324,15 @@ void lora_run(void) {
         lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), 0);
 #endif // FORCE_BAT_SEND_AT_OLED_INTERVAL
     }
-#endif
+#endif // OLED_BAT_INTERVAL
+
+#if defined(DEEP_SLEEP_TIMEOUT_MS) && defined(DEEP_SLEEP_DURATION_S)
+    bool got_sml = sml_data_received();
+    if ((got_sml && (time >= DEEP_SLEEP_TIMEOUT_MS))
+            || ((!got_sml) && (time >= DEEP_SLEEP_ABORT_NO_DATA_MS))) {
+        heltec_deep_sleep(DEEP_SLEEP_DURATION_S);
+    }
+#endif // DEEP_SLEEP_TIMEOUT_MS && DEEP_SLEEP_DURATION_S
 
     if (!use_lora) {
         return;

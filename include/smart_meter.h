@@ -19,6 +19,8 @@
 void sml_init(void);
 void sml_run(void);
 
+bool sml_data_received(void);
+
 #endif // FEATURE_SML
 
 #endif // __ESP_ENV_SMART_METER__

@@ -133,7 +133,6 @@ static void lora_rx(void) {
 static bool lora_tx(enum lora_sml_type type, double value) {
     bool tx_legal = millis() > (last_tx + minimum_pause);
     if (!tx_legal) {
-        //debug.printf("Legal limit, wait %i sec.\n", (int)((minimum_pause - (millis() - last_tx)) / 1000) + 1);
         return false;
     }
 
@@ -145,13 +144,14 @@ static bool lora_tx(enum lora_sml_type type, double value) {
     uint8_t *data = (uint8_t *)&msg;
     const size_t len = sizeof(struct lora_sml_msg);
 
+    debug.printf("TX [%d] (%lu) ", data[0], len);
+
 #ifdef LORA_XOR_KEY
     for (size_t i = 0; i < len; i++) {
         data[i] ^= LORA_XOR_KEY[i];
     }
 #endif
 
-    debug.printf("TX [%d] (%lu) ", data[0], len);
     radio.clearDio1Action();
 
     heltec_led(LORA_LED_BRIGHTNESS);
@@ -318,7 +318,6 @@ void lora_run(void) {
         return;
     }
 
-    // If a packet was received, display it and the RSSI and SNR
     if (rx_flag) {
         rx_flag = false;
 

@@ -115,27 +115,19 @@ void sml_run(void) {
 
         if (!isnan(SumWh)) {
             debug.printf("Sum: %14.3lf Wh\n", SumWh);
-#ifdef FEATURE_LORA
-            lora_sml_send(LORA_SML_SUM_WH, SumWh, counter);
-#endif // FEATURE_LORA
         }
 
         if (!isnan(T1Wh)) {
             debug.printf(" T1: %14.3lf Wh\n", T1Wh);
-#ifdef FEATURE_LORA
-            lora_sml_send(LORA_SML_T1_WH, T1Wh, counter);
-#endif // FEATURE_LORA
         }
 
         if (!isnan(T2Wh)) {
             debug.printf(" T2: %14.3lf Wh\n", T2Wh);
-#ifdef FEATURE_LORA
-            lora_sml_send(LORA_SML_T2_WH, T2Wh, counter);
-#endif // FEATURE_LORA
         }
 
         if (!isnan(SumW)) {
             debug.printf("Sum: %14.3lf W\n", SumW);
+
 #ifdef FEATURE_LORA
             lora_sml_send(LORA_SML_SUM_W, SumW, counter);
 #endif // FEATURE_LORA
@@ -150,6 +142,7 @@ void sml_run(void) {
 
         if (!isnan(L2W)) {
             debug.printf(" L2: %14.3lf W\n", L2W);
+
 #ifdef FEATURE_LORA
             lora_sml_send(LORA_SML_L2_W, L2W, counter);
 #endif // FEATURE_LORA
@@ -157,16 +150,46 @@ void sml_run(void) {
 
         if (!isnan(L3W)) {
             debug.printf(" L3: %14.3lf W\n", L3W);
+
 #ifdef FEATURE_LORA
             lora_sml_send(LORA_SML_L3_W, L3W, counter);
 #endif // FEATURE_LORA
         }
 
+        debug.println();
+
 #ifdef FEATURE_LORA
+        // the power readings (Watt) are just sent as is, if available.
+        // the energy readings are consolidated if possible, to avoid
+        // unneccessary data transmission
+        if ((!isnan(SumWh)) && (!isnan(T1Wh))
+                && (fabs(SumWh - T1Wh) < 0.1)
+                && ((isnan(T2Wh)) || (fabs(T2Wh) < 0.1))) {
+            // (SumWh == T1Wh) && ((T2Wh == 0) || (T2Wh == NAN))
+            // just send T1Wh
+            lora_sml_send(LORA_SML_T1_WH, T1Wh, counter);
+        } else if ((!isnan(SumWh)) && (!isnan(T2Wh))
+                && (fabs(SumWh - T2Wh) < 0.1)
+                && ((isnan(T1Wh)) || (fabs(T1Wh) < 0.1))) {
+            // (SumWh == T2Wh) && ((T1Wh == 0) || (T1Wh == NAN))
+            // just send T2Wh
+            lora_sml_send(LORA_SML_T2_WH, T2Wh, counter);
+        } else {
+            // just do normal sending if available
+            if (!isnan(SumWh)) {
+                lora_sml_send(LORA_SML_SUM_WH, SumWh, counter);
+            }
+            if (!isnan(T1Wh)) {
+                lora_sml_send(LORA_SML_T1_WH, T1Wh, counter);
+            }
+            if (!isnan(T2Wh)) {
+                lora_sml_send(LORA_SML_T2_WH, T2Wh, counter);
+            }
+        }
+
+        // update own battery state with each sml readout
         lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), counter);
 #endif // FEATURE_LORA
-
-        debug.println();
     }
 }
 

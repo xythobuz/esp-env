@@ -28,7 +28,7 @@
 //#define DEBUG_LORA_RX_HEXDUMP
 
 #ifdef FEATURE_SML
-#define LORA_LED_BRIGHTNESS 1 // in percent, 50% brightness is plenty for this LED
+#define LORA_LED_BRIGHTNESS 0 // in percent, 50% brightness is plenty for this LED
 #define OLED_BAT_INTERVAL (2UL * 60UL * 1000UL) // in ms
 #define FORCE_BAT_SEND_AT_OLED_INTERVAL
 #else // FEATURE_SML
@@ -177,11 +177,13 @@ static bool lora_tx(enum lora_sml_type type, double value) {
 
     radio.setDio1Action(lora_rx);
 
+#ifndef FEATURE_SML
     success = true;
     RADIOLIB_CHECK(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
     if (!success) {
         use_lora = false;
     }
+#endif // ! FEATURE_SML
 
     return r;
 }
@@ -283,12 +285,14 @@ void lora_init(void) {
         return;
     }
 
+#ifndef FEATURE_SML
     // Start receiving
     RADIOLIB_CHECK(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
     if (!success) {
         use_lora = false;
         return;
     }
+#endif // ! FEATURE_SML
 
 #ifdef FEATURE_SML
     // turn on Ve external 3.3V to power Smart Meter reader
@@ -412,12 +416,14 @@ void lora_run(void) {
             }
         }
 
+#ifndef FEATURE_SML
         success = true;
         RADIOLIB_CHECK(radio.startReceive(RADIOLIB_SX126X_RX_TIMEOUT_INF));
         if (!success) {
             use_lora = false;
             return;
         }
+#endif // ! FEATURE_SML
     }
 
 #ifdef FEATURE_SML

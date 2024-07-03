@@ -57,6 +57,12 @@
 #define LED_ERROR_BLINK_INTERVAL 100
 #define MQTT_RECONNECT_INTERVAL (5 * 1000)
 
+#define NTP_SERVER "pool.ntp.org"
+// TODO auto-detect?!
+//#warning hard-coded timezone and daylight savings offset
+#define gmtOffset_sec (60 * 60)
+#define daylightOffset_sec (60 * 60)
+
 #if defined(SENSOR_LOCATION_LIVINGROOM)
 #define SENSOR_LOCATION "livingroom"
 #define SENSOR_ID SENSOR_LOCATION

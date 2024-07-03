@@ -18,6 +18,7 @@
 #include "sensors.h"
 #include "relais.h"
 #include "moisture.h"
+#include "ui.h"
 #include "influx.h"
 
 #ifdef ENABLE_INFLUXDB_LOGGING
@@ -129,6 +130,14 @@ void writeSensorDatum(String measurement, String sensor, String placement, Strin
     debug.print(" ");
     debug.printf("%.2lf\n", value);
     writeMeasurement(ms);
+
+#ifdef FEATURE_NTP
+    struct tm timeinfo;
+    if (getLocalTime(&timeinfo)) {
+        debug.print(time_to_time_str(timeinfo) + " ");
+    }
+#endif // FEATURE_NTP
+
     debug.println(F("Done!"));
 }
 

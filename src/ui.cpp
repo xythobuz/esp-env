@@ -20,7 +20,6 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <time.h>
 
 #include "config.h"
 #include "DebugLog.h"
@@ -72,18 +71,12 @@
 #define FULL_BRIGHT_MS (1000 * 30)
 #define NO_BRIGHT_MS (1000 * 2)
 
-#define NTP_SERVER "pool.ntp.org"
 #define STANDBY_REDRAW_MS 500
 
 #define CALIB_1_X 42
 #define CALIB_1_Y 42
 #define CALIB_2_X LCD_WIDTH - 1 - CALIB_1_X
 #define CALIB_2_Y LCD_HEIGHT - 1 - CALIB_1_Y
-
-// TODO auto-detect?!
-#warning hard-coded timezone and daylight savings offset
-#define gmtOffset_sec (60 * 60)
-#define daylightOffset_sec (60 * 60)
 
 #if (LCD_MIN_BRIGHTNESS <= STANDBY_BRIGHTNESS)
 #error STANDBY_BRIGHTNESS needs to be bigger than LCD_MIN_BRIGHTNESS
@@ -259,38 +252,12 @@ static void draw_standby(void) {
     tft.drawString(ESP_PLATFORM_NAME " " NAME_OF_FEATURE " V" ESP_ENV_VERSION, LCD_WIDTH / 2, 0, 2);
     tft.drawString("by xythobuz.de", LCD_WIDTH / 2, 16, 2);
 
+    String date = "?";
+    String time = "?";
     struct tm timeinfo;
-    String date, time;
-    String weekday[7] = { "So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa." };
-    if(getLocalTime(&timeinfo)) {
-        date += weekday[timeinfo.tm_wday % 7];
-        date += " ";
-        if (timeinfo.tm_mday < 10) {
-            date += "0";
-        }
-        date += String(timeinfo.tm_mday);
-        date += ".";
-        if ((timeinfo.tm_mon + 1) < 10) {
-            date += "0";
-        }
-        date += String(timeinfo.tm_mon + 1);
-        date += ".";
-        date += String(timeinfo.tm_year + 1900);
-
-        if (timeinfo.tm_hour < 10) {
-            time += "0";
-        }
-        time += String(timeinfo.tm_hour);
-        time += ":";
-        if (timeinfo.tm_min < 10) {
-            time += "0";
-        }
-        time += String(timeinfo.tm_min);
-        time += ":";
-        if (timeinfo.tm_sec < 10) {
-            time += "0";
-        }
-        time += String(timeinfo.tm_sec);
+    if (getLocalTime(&timeinfo)) {
+        date = time_to_date_str(timeinfo);
+        time = time_to_time_str(timeinfo);
     }
 
     tft.setTextDatum(MC_DATUM); // middle center
@@ -474,9 +441,6 @@ void ui_progress(enum ui_state state) {
         } break;
 
         case UI_READY: {
-            // get time via NTP
-            configTime(gmtOffset_sec, daylightOffset_sec, NTP_SERVER);
-
             ui_page = UI_START;
             ui_draw_menu();
         } break;
@@ -648,3 +612,45 @@ void ui_run(void) {
 }
 
 #endif // FEATURE_UI
+
+#ifdef FEATURE_NTP
+
+String time_to_date_str(struct tm timeinfo) {
+    static String weekday[7] = { "So.", "Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa." };
+    String date;
+    date += weekday[timeinfo.tm_wday % 7];
+    date += " ";
+    if (timeinfo.tm_mday < 10) {
+        date += "0";
+    }
+    date += String(timeinfo.tm_mday);
+    date += ".";
+    if ((timeinfo.tm_mon + 1) < 10) {
+        date += "0";
+    }
+    date += String(timeinfo.tm_mon + 1);
+    date += ".";
+    date += String(timeinfo.tm_year + 1900);
+    return date;
+}
+
+String time_to_time_str(struct tm timeinfo) {
+    String time;
+    if (timeinfo.tm_hour < 10) {
+        time += "0";
+    }
+    time += String(timeinfo.tm_hour);
+    time += ":";
+    if (timeinfo.tm_min < 10) {
+        time += "0";
+    }
+    time += String(timeinfo.tm_min);
+    time += ":";
+    if (timeinfo.tm_sec < 10) {
+        time += "0";
+    }
+    time += String(timeinfo.tm_sec);
+    return time;
+}
+
+#endif // FEATURE_NTP

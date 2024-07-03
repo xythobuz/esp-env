@@ -224,6 +224,11 @@ void setup() {
 
 #endif // ARCH
 
+#ifdef FEATURE_NTP
+    // get time via NTP
+    configTime(gmtOffset_sec, daylightOffset_sec, NTP_SERVER);
+#endif
+
     debug.println(F("Seeding"));
     randomSeed(micros());
 

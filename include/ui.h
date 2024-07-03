@@ -14,6 +14,14 @@
 #ifndef __UI_H__
 #define __UI_H__
 
+#ifdef FEATURE_NTP
+#include <time.h>
+String time_to_date_str(struct tm timeinfo);
+String time_to_time_str(struct tm timeinfo);
+#endif // FEATURE_NTP
+
+#ifdef FEATURE_UI
+
 enum bathroom_light_states {
     BATH_LIGHT_OFF,
     BATH_LIGHT_NONE,
@@ -51,5 +59,7 @@ void ui_init(void);
 void ui_run(void);
 
 void ui_progress(enum ui_state state);
+
+#endif // FEATURE_UI
 
 #endif // __UI_H__

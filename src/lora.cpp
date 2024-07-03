@@ -82,7 +82,8 @@
 
 static unsigned long last_bat_time = 0;
 static bool use_lora = true;
-static unsigned long last_tx = 0, tx_time = 0, minimum_pause = 0;
+static unsigned long last_tx = 0, last_rx = 0;
+static unsigned long tx_time = 0, minimum_pause = 0;
 static volatile bool rx_flag = false;
 
 #ifdef FEATURE_SML
@@ -334,12 +335,20 @@ void lora_run(void) {
     }
 #endif // DEEP_SLEEP_TIMEOUT_MS && DEEP_SLEEP_DURATION_S
 
+#ifndef FEATURE_SML
+    if (time >= (6UL * 60UL * 60UL * 1000UL) // running for at least 6h
+        && ((time - last_rx) >= (30UL * 1000UL))) { // and last lora rx at least 30s ago
+        heltec_deep_sleep(10); // attempt reset to avoid lorarx hanging
+    }
+#endif // ! FEATURE_SML
+
     if (!use_lora) {
         return;
     }
 
     if (rx_flag) {
         rx_flag = false;
+        last_rx = time;
 
         bool success = true;
         uint8_t data[sizeof(struct lora_sml_msg)];

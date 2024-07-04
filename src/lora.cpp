@@ -15,11 +15,11 @@
 
 #include <Arduino.h>
 
-// Turns the 'PRG' button into the power button, long press is off
-// this also increases deep sleep power usage!
-#ifndef FEATURE_SML
+#ifdef FEATURE_SML
+#define HELTEC_NO_DISPLAY
+#else // FEATURE_SML
 #define HELTEC_POWER_BUTTON
-#endif // ! FEATURE_SML
+#endif // FEATURE_SML
 
 #include <heltec_unofficial.h>
 
@@ -33,11 +33,9 @@
 
 #ifdef FEATURE_SML
 #define LORA_LED_BRIGHTNESS 0 // in percent, 50% brightness is plenty for this LED
-#define OLED_BAT_INTERVAL (2UL * 60UL * 1000UL) // in ms
-#define FORCE_BAT_SEND_AT_OLED_INTERVAL
-#define DEEP_SLEEP_TIMEOUT_MS (1UL * 60UL * 1000UL) // gather data for 1min
-#define DEEP_SLEEP_ABORT_NO_DATA_MS (20UL * 1000UL) // if no data appears, abort after 20s
-#define DEEP_SLEEP_DURATION_S (5UL * 60UL) // then sleep for 5min
+#define DEEP_SLEEP_DURATION_S 60
+#define DEEP_SLEEP_TIMEOUT_MS (30UL * 1000UL)
+#define DEEP_SLEEP_ABORT_NO_DATA_MS DEEP_SLEEP_TIMEOUT_MS
 #else // FEATURE_SML
 #define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
 #endif // FEATURE_SML
@@ -86,6 +84,10 @@ static unsigned long last_tx = 0, last_rx = 0;
 static unsigned long tx_time = 0, minimum_pause = 0;
 static volatile bool rx_flag = false;
 
+#ifndef LORA_KEEP_SENDING_CACHE
+RTC_DATA_ATTR static uint8_t last_tx_msg = LORA_SML_HELLO;
+#endif // ! LORA_KEEP_SENDING_CACHE
+
 #ifdef FEATURE_SML
 
 struct sml_cache {
@@ -103,7 +105,9 @@ void lora_oled_init(void) {
 }
 
 void lora_oled_print(String s) {
+#ifndef FEATURE_SML
     display.print(s);
+#endif // ! FEATURE_SML
 }
 
 static void print_bat(void) {
@@ -120,6 +124,7 @@ double lora_get_mangled_bat(void) {
     return *((double *)data);
 }
 
+#ifdef LORA_CLIENT_CHECKSUM
 // adapted from "Hacker's Delight"
 static uint32_t calc_checksum(const uint8_t *data, size_t len) {
     uint32_t c = 0xFFFFFFFF;
@@ -133,6 +138,7 @@ static uint32_t calc_checksum(const uint8_t *data, size_t len) {
 
     return ~c;
 }
+#endif // LORA_CLIENT_CHECKSUM
 
 static void lora_rx(void) {
     rx_flag = true;
@@ -147,7 +153,10 @@ static bool lora_tx(enum lora_sml_type type, double value) {
     struct lora_sml_msg msg;
     msg.type = type;
     msg.value = value;
+
+#ifdef LORA_CLIENT_CHECKSUM
     msg.checksum = calc_checksum((uint8_t *)&msg, offsetof(struct lora_sml_msg, checksum));
+#endif // LORA_CLIENT_CHECKSUM
 
     uint8_t *data = (uint8_t *)&msg;
     const size_t len = sizeof(struct lora_sml_msg);
@@ -158,7 +167,7 @@ static bool lora_tx(enum lora_sml_type type, double value) {
     for (size_t i = 0; i < len; i++) {
         data[i] ^= LORA_XOR_KEY[i];
     }
-#endif
+#endif // LORA_XOR_KEY
 
     radio.clearDio1Action();
 
@@ -197,10 +206,8 @@ static bool lora_tx(enum lora_sml_type type, double value) {
 }
 
 #ifdef FEATURE_SML
-static bool lora_sml_cache_send(enum lora_sml_type msg) {
-    return lora_tx(msg, cache[msg].value);
-}
 
+#ifdef LORA_KEEP_SENDING_CACHE
 static void lora_sml_handle_cache(void) {
     // find smallest message counter that is ready
     unsigned long min_counter = ULONG_MAX;
@@ -213,7 +220,8 @@ static void lora_sml_handle_cache(void) {
     // try to transmit next value with lowest counter
     for (int i = 0; i < LORA_SML_NUM_MESSAGES; i++) {
         if (cache[i].ready && (cache[i].counter == min_counter)) {
-            if (lora_sml_cache_send((enum lora_sml_type)i)) {
+            enum lora_sml_type msg = (enum lora_sml_type)i;
+            if (lora_tx(msg, cache[msg].value)) {
                 if (cache[i].has_next) {
                     cache[i].has_next = false;
                     cache[i].value = cache[i].next_value;
@@ -225,6 +233,7 @@ static void lora_sml_handle_cache(void) {
         }
     }
 }
+#endif // LORA_KEEP_SENDING_CACHE
 
 void lora_sml_send(enum lora_sml_type msg, double value, unsigned long counter) {
     if (cache[msg].ready) {
@@ -239,6 +248,32 @@ void lora_sml_send(enum lora_sml_type msg, double value, unsigned long counter) 
         cache[msg].counter = counter;
     }
 }
+
+void lora_sml_done(void) {
+#ifndef LORA_KEEP_SENDING_CACHE
+    // turn off Ve external 3.3V to Smart Meter reader
+    heltec_ve(false);
+
+    // select next message from cache
+    uint8_t n = 0;
+    do {
+        last_tx_msg++;
+        n++;
+        if (last_tx_msg >= LORA_SML_NUM_MESSAGES) {
+            last_tx_msg = 0;
+        }
+    } while ((!cache[last_tx_msg].ready) && (n < LORA_SML_NUM_MESSAGES + 1));
+
+    // transmit it
+    if (cache[last_tx_msg].ready) {
+        enum lora_sml_type msg = (enum lora_sml_type)last_tx_msg;
+        lora_tx(msg, cache[msg].value);
+    }
+
+    heltec_deep_sleep(DEEP_SLEEP_DURATION_S < (minimum_pause / 1000) ? (minimum_pause / 1000) : DEEP_SLEEP_DURATION_S);
+#endif // ! LORA_KEEP_SENDING_CACHE
+}
+
 #endif // FEATURE_SML
 
 void lora_init(void) {
@@ -251,9 +286,9 @@ void lora_init(void) {
         cache[i].counter = 0;
         cache[i].next_counter = 0;
     }
-#endif // FEATURE_SML
 
-    print_bat();
+    //print_bat();
+#endif // FEATURE_SML
 
     bool success = true;
 
@@ -305,9 +340,6 @@ void lora_init(void) {
 #ifdef FEATURE_SML
     // turn on Ve external 3.3V to power Smart Meter reader
     heltec_ve(true);
-
-    // send hello msg after boot
-    lora_sml_send(LORA_SML_HELLO, heltec_temperature(), 0);
 #endif // FEATURE_SML
 }
 
@@ -331,7 +363,7 @@ void lora_run(void) {
     bool got_sml = sml_data_received();
     if ((got_sml && (time >= DEEP_SLEEP_TIMEOUT_MS))
             || ((!got_sml) && (time >= DEEP_SLEEP_ABORT_NO_DATA_MS))) {
-        heltec_deep_sleep(DEEP_SLEEP_DURATION_S);
+        heltec_deep_sleep(DEEP_SLEEP_DURATION_S < (minimum_pause / 1000) ? (minimum_pause / 1000) : DEEP_SLEEP_DURATION_S);
     }
 #endif // DEEP_SLEEP_TIMEOUT_MS && DEEP_SLEEP_DURATION_S
 
@@ -376,11 +408,14 @@ void lora_run(void) {
 #endif
 
             struct lora_sml_msg *msg = (struct lora_sml_msg *)data;
+
+#ifdef LORA_CLIENT_CHECKSUM
             uint32_t checksum = calc_checksum(data, offsetof(struct lora_sml_msg, checksum));
             if (checksum != msg->checksum) {
                 debug.printf("  CRC: 0x%08X != 0x%08X\n", msg->checksum, checksum);
             } else {
                 debug.printf("  CRC: OK 0x%08X\n", checksum);
+#endif // LORA_CLIENT_CHECKSUM
 
 #ifdef ENABLE_INFLUXDB_LOGGING
                 if (data[0] == LORA_SML_BAT_V) {
@@ -438,7 +473,10 @@ void lora_run(void) {
                     writeSensorDatum("environment", "sml", SENSOR_LOCATION, key, msg->value);
                 }
 #endif // ENABLE_INFLUXDB_LOGGING
+
+#ifdef LORA_CLIENT_CHECKSUM
             }
+#endif // LORA_CLIENT_CHECKSUM
         }
 
 #ifndef FEATURE_SML
@@ -451,10 +489,11 @@ void lora_run(void) {
 #endif // ! FEATURE_SML
     }
 
-#ifdef FEATURE_SML
+#ifdef LORA_KEEP_SENDING_CACHE
     lora_sml_handle_cache();
-#endif // FEATURE_SML
+#endif // LORA_KEEP_SENDING_CACHE
 
+#ifndef FEATURE_SML
     if (button.isSingleClick()) {
         // In case of button click, tell user to wait
         bool tx_legal = millis() > last_tx + minimum_pause;
@@ -463,13 +502,9 @@ void lora_run(void) {
             return;
         }
 
-        // send test hello message on lorarx target, or battery state on loratx target
-#ifdef FEATURE_SML
-        lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), 0);
-#else // FEATURE_SML
         lora_tx(LORA_SML_HELLO, heltec_temperature());
-#endif // FEATURE_SML
     }
+#endif // ! FEATURE_SML
 }
 
 #endif // FEATURE_LORA

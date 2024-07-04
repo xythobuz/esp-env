@@ -39,11 +39,14 @@ enum lora_sml_type {
 struct lora_sml_msg {
     uint8_t type; // enum lora_sml_type
     double value;
+#ifdef LORA_CLIENT_CHECKSUM
     uint32_t checksum;
+#endif
 } __attribute__ ((packed));
 
 #ifdef FEATURE_SML
 void lora_sml_send(enum lora_sml_type msg, double value, unsigned long counter);
+void lora_sml_done(void);
 #endif // FEATURE_SML
 
 double lora_get_mangled_bat(void);

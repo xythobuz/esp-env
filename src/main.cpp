@@ -17,6 +17,7 @@
 #include <ESP8266WiFi.h>
 #elif defined(ARDUINO_ARCH_ESP32)
 #include <WiFi.h>
+#include <esp_task_wdt.h>
 #elif defined(ARDUINO_ARCH_AVR)
 #include <UnoWiFiDevEdSerial1.h>
 #include <WiFiLink.h>
@@ -65,6 +66,7 @@ void setup() {
 
     debug.println(F("Initializing..."));
 
+#ifndef FEATURE_LORA
     // Blink LED for init
     for (int i = 0; i < 2; i++) {
         digitalWrite(BUILTIN_LED_PIN, LOW); // LED on
@@ -72,6 +74,7 @@ void setup() {
         digitalWrite(BUILTIN_LED_PIN, HIGH); // LED off
         delay(LED_INIT_BLINK_INTERVAL);
     }
+#endif // ! FEATURE_SML
 
 #ifdef FEATURE_UI
     debug.println(F("UI"));
@@ -94,8 +97,10 @@ void setup() {
     moisture_init();
 #endif // FEATURE_MOISTURE
 
+#ifndef DISABLE_SENSORS
     debug.println(F("Sensors"));
     initSensors();
+#endif // ! DISABLE_SENSORS
 
 #ifdef FEATURE_LORA
     debug.println(F("LoRa"));
@@ -147,6 +152,10 @@ void setup() {
     WiFi.hostname(hostname);
 
 #elif defined(ARDUINO_ARCH_ESP32)
+
+    // add generous 30s watchdog
+    esp_task_wdt_init(30, true);
+    esp_task_wdt_add(NULL);
 
     // Set hostname workaround
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
@@ -252,7 +261,13 @@ void setup() {
 }
 
 void loop() {
+#ifdef ARDUINO_ARCH_ESP32
+    esp_task_wdt_reset();
+#endif // ARDUINO_ARCH_ESP32
+
+#ifndef DISABLE_SENSORS
     runSensors();
+#endif // ! DISABLE_SENSORS
 
 #ifdef FEATURE_SML
     sml_run();
@@ -272,10 +287,12 @@ void loop() {
     lora_run();
 #endif // FEATURE_LORA
 
+#ifndef FEATURE_LORA
     // blink heartbeat LED
     unsigned long time = millis();
     if ((time - last_led_blink_time) >= LED_BLINK_INTERVAL) {
         last_led_blink_time = time;
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
     }
+#endif // ! FEATURE_LORA
 }

@@ -28,7 +28,7 @@
 #define SML_PARAM SWSERIAL_8N1
 
 static EspSoftwareSerial::UART port1, port2;
-static unsigned long counter = 0;
+RTC_DATA_ATTR static unsigned long counter = 0;
 
 static double SumWh = NAN, T1Wh = NAN, T2Wh = NAN;
 static double SumW = NAN, L1W = NAN, L2W = NAN, L3W = NAN;
@@ -193,6 +193,8 @@ void sml_run(void) {
 
         // update own battery state with each sml readout
         lora_sml_send(LORA_SML_BAT_V, lora_get_mangled_bat(), counter);
+
+        lora_sml_done();
 #endif // FEATURE_LORA
     }
 }

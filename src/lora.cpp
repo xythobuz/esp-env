@@ -368,9 +368,10 @@ void lora_run(void) {
 #endif // DEEP_SLEEP_TIMEOUT_MS && DEEP_SLEEP_DURATION_S
 
 #ifndef FEATURE_SML
-    if (time >= (6UL * 60UL * 60UL * 1000UL) // running for at least 6h
-        && ((time - last_rx) >= (30UL * 1000UL))) { // and last lora rx at least 30s ago
-        heltec_deep_sleep(10); // attempt reset to avoid lorarx hanging
+    if ((time >= (6UL * 60UL * 60UL * 1000UL) // running for at least 6h
+        && ((time - last_rx) >= (30UL * 1000UL))) // and last lora rx at least 30s ago
+        || ((time - last_rx) >= (4UL * 60UL * 1000UL))) { // or last message longer than 4min ago
+        heltec_deep_sleep(5); // attempt reset to avoid lorarx hanging
     }
 #endif // ! FEATURE_SML
 

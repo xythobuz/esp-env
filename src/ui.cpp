@@ -60,7 +60,7 @@
 #define LDR_CHECK_MS 100
 #define LDR_DARK_VALUE 1200
 #define LDR_BRIGHT_VALUE 0
-#define LDR_LOWPASS_FACT 0.025f
+#define LDR_LOWPASS_FACT 0.01f
 
 #define STANDBY_BRIGHTNESS 10
 #define LCD_MIN_BRIGHTNESS (STANDBY_BRIGHTNESS * 2)
@@ -101,7 +101,7 @@ enum ui_pages {
 static enum ui_pages ui_page = UI_START;
 static bool is_touched = false;
 static unsigned long last_ldr = 0;
-static int ldr_value = 0;
+static float ldr_value = 0;
 static unsigned long last_touch_time = 0;
 static int curr_brightness = LCD_MAX_BRIGHTNESS;
 static int set_max_brightness = LCD_MAX_BRIGHTNESS;
@@ -464,7 +464,7 @@ void ui_run(void) {
     // read out LDR in regular intervals
     if (now >= (last_ldr + LDR_CHECK_MS)) {
         last_ldr = now;
-        int ldr = analogRead(LDR_PIN);
+        float ldr = analogRead(LDR_PIN);
 
         ldr_value = (ldr_value * (1.0f - LDR_LOWPASS_FACT)) + (ldr * LDR_LOWPASS_FACT);
 

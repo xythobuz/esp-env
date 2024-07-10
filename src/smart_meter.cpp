@@ -27,7 +27,7 @@
 #define SML_BAUD 9600
 #define SML_PARAM SWSERIAL_8N1
 
-static EspSoftwareSerial::UART port1, port2;
+static EspSoftwareSerial::UART port;
 RTC_DATA_ATTR static unsigned long counter = 0;
 
 static double SumWh = NAN, T1Wh = NAN, T2Wh = NAN;
@@ -93,16 +93,18 @@ static OBISHandler handlers[] = {
 void sml_init(void) {
     init_vars();
 
-    port1.begin(SML_BAUD, SML_PARAM, SML_RX, -1, false);
-    port2.begin(SML_BAUD, SML_PARAM, SML_TX, -1, false);
+    pinMode(SML_RX, INPUT);
+    pinMode(SML_TX, OUTPUT);
+
+    port.begin(SML_BAUD, SML_PARAM, SML_RX, SML_TX, false);
 }
 
 void sml_run(void) {
-    if ((!port1.available()) && (!port2.available())) {
+    if (!port.available()) {
         return;
     }
 
-    unsigned char c = port1.available() ? port1.read() : port2.read();
+    unsigned char c = port.read();
     sml_states_t s = smlState(c);
 
     if (s == SML_START) {

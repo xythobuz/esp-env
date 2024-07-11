@@ -33,9 +33,9 @@
 
 #ifdef FEATURE_SML
 #define LORA_LED_BRIGHTNESS 0 // in percent, 50% brightness is plenty for this LED
-#define DEEP_SLEEP_DURATION_S 60
-#define DEEP_SLEEP_TIMEOUT_MS (30UL * 1000UL)
-#define DEEP_SLEEP_ABORT_NO_DATA_MS DEEP_SLEEP_TIMEOUT_MS
+#define DEEP_SLEEP_DURATION_S (60 - (millis() / 1000)) // 60s cycle time
+#define DEEP_SLEEP_TIMEOUT_MS (30UL * 1000UL) // fallback sleep timeout when sml data was received
+#define DEEP_SLEEP_ABORT_NO_DATA_MS DEEP_SLEEP_TIMEOUT_MS // sleep timeout when no sml data received
 #else // FEATURE_SML
 #define LORA_LED_BRIGHTNESS 25 // in percent, 50% brightness is plenty for this LED
 #endif // FEATURE_SML
@@ -59,7 +59,7 @@
 // transmissting without an antenna can damage your hardware.
 // 25mW = 14dBm
 #define MAX_TX_POWER        14
-#define ANTENNA_GAIN        5
+#define ANTENNA_GAIN        (5 - 3) // 3dB for the coax extensions and their SMA connectors
 #define TRANSMIT_POWER      (MAX_TX_POWER - ANTENNA_GAIN)
 
 #define RADIOLIB_xy(action) \
@@ -85,7 +85,9 @@ static unsigned long tx_time = 0, minimum_pause = 0;
 static volatile bool rx_flag = false;
 
 #ifndef LORA_KEEP_SENDING_CACHE
+#define BAT_MSG_EVERY_NTH 5
 RTC_DATA_ATTR static uint8_t last_tx_msg = LORA_SML_HELLO;
+RTC_DATA_ATTR static uint8_t bat_msg_cnt = 0;
 #endif // ! LORA_KEEP_SENDING_CACHE
 
 #ifdef FEATURE_SML
@@ -259,6 +261,13 @@ void lora_sml_done(void) {
     do {
         last_tx_msg++;
         n++;
+        if (last_tx_msg == LORA_SML_BAT_V) {
+            bat_msg_cnt++;
+            if (bat_msg_cnt < BAT_MSG_EVERY_NTH) {
+                continue; // skip bat message this time
+            }
+            bat_msg_cnt = 0;
+        }
         if (last_tx_msg >= LORA_SML_NUM_MESSAGES) {
             last_tx_msg = 0;
         }
@@ -270,6 +279,7 @@ void lora_sml_done(void) {
         lora_tx(msg, cache[msg].value);
     }
 
+    debug.println("sleep");
     heltec_deep_sleep(DEEP_SLEEP_DURATION_S < (minimum_pause / 1000) ? (minimum_pause / 1000) : DEEP_SLEEP_DURATION_S);
 #endif // ! LORA_KEEP_SENDING_CACHE
 }
@@ -363,6 +373,7 @@ void lora_run(void) {
     bool got_sml = sml_data_received();
     if ((got_sml && (time >= DEEP_SLEEP_TIMEOUT_MS))
             || ((!got_sml) && (time >= DEEP_SLEEP_ABORT_NO_DATA_MS))) {
+        debug.printf("falllback sleep %d %lu\n", got_sml, time);
         heltec_deep_sleep(DEEP_SLEEP_DURATION_S < (minimum_pause / 1000) ? (minimum_pause / 1000) : DEEP_SLEEP_DURATION_S);
     }
 #endif // DEEP_SLEEP_TIMEOUT_MS && DEEP_SLEEP_DURATION_S
@@ -371,6 +382,7 @@ void lora_run(void) {
     if ((time >= (6UL * 60UL * 60UL * 1000UL) // running for at least 6h
         && ((time - last_rx) >= (30UL * 1000UL))) // and last lora rx at least 30s ago
         || ((time - last_rx) >= (4UL * 60UL * 1000UL))) { // or last message longer than 4min ago
+        debug.println("hang sleep");
         heltec_deep_sleep(5); // attempt reset to avoid lorarx hanging
     }
 #endif // ! FEATURE_SML
@@ -503,6 +515,7 @@ void lora_run(void) {
             return;
         }
 
+        debug.println("click");
         lora_tx(LORA_SML_HELLO, heltec_temperature());
     }
 #endif // ! FEATURE_SML

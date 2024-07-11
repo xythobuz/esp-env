@@ -45,6 +45,7 @@
 // LoRa SML Bridge "Crypto"
 // needs to be sizeof(struct lora_sml_msg) bytes long
 #define LORA_XOR_KEY "_SUPER_SECRET_KEY_HERE_"
+#define LORA_CLIENT_CHECKSUM
 
 // all given in milliseconds
 #define SERVER_HANDLE_INTERVAL 10

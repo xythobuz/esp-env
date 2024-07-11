@@ -29,12 +29,13 @@
 
 static EspSoftwareSerial::UART port;
 RTC_DATA_ATTR static unsigned long counter = 0;
+bool got_data = false;
 
 static double SumWh = NAN, T1Wh = NAN, T2Wh = NAN;
 static double SumW = NAN, L1W = NAN, L2W = NAN, L3W = NAN;
 
 bool sml_data_received(void) {
-    return counter > 0;
+    return got_data;
 }
 
 static void EnergySum(void) {
@@ -163,6 +164,8 @@ void sml_run(void) {
         }
 
         debug.println();
+
+        got_data = true;
 
 #ifdef FEATURE_LORA
         // the power readings (Watt) are just sent as is, if available.

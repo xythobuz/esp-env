@@ -17,7 +17,7 @@
 #include "DebugLog.h"
 #include "SimpleInflux.h"
 
-#ifdef DENABLE_SIMPLE_INFLUX
+#ifdef ENABLE_SIMPLE_INFLUX
 
 #if defined(ARDUINO_ARCH_AVR)
 #include <WiFiLink.h>

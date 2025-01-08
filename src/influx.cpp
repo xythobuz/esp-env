@@ -114,10 +114,10 @@ static void addTagsRelais(InfluxData &measurement, String id, String name) {
 #endif
 
 void writeSensorDatum(String measurement, String sensor, String placement, String key, double value) {
-    InfluxData ms(measurement);
+    InfluxData ms(measurement.c_str());
     addTagsSensor(ms, sensor, placement);
 
-    ms.addValue(key, value);
+    ms.addValue(key.c_str(), value);
 
     debug.print("Writing ");
     debug.print(measurement);

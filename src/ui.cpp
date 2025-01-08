@@ -18,6 +18,8 @@
  * ----------------------------------------------------------------------------
  */
 
+#ifdef FEATURE_UI
+
 #include <Arduino.h>
 #include <WiFi.h>
 
@@ -26,8 +28,6 @@
 #include "mqtt.h"
 #include "memory.h"
 #include "ui.h"
-
-#ifdef FEATURE_UI
 
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>

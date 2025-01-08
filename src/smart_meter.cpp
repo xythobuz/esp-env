@@ -22,8 +22,8 @@
 #include "lora.h"
 #include "smart_meter.h"
 
-#define SML_TX 33
-#define SML_RX 34
+#define SML_RX 33
+#define SML_TX 34
 #define SML_BAUD 9600
 #define SML_PARAM SWSERIAL_8N1
 

@@ -121,8 +121,7 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
     } else if (ps.indexOf("none") != -1) {
         state = 4;
     } else {
-        debug.println(F("parse abort"));
-        return;
+        state = -1;
     }
 #endif
 
@@ -130,35 +129,53 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
     // store new topic values for display
     if (ts == "livingroom/light_kitchen") {
         ui_status.light_kitchen = state ? true : false;
+
         prev_status.light_kitchen = ui_status.light_kitchen;
         ui_progress(UI_UPDATE);
     } else if (ts == "livingroom/light_pc") {
         ui_status.light_pc = state ? true : false;
+
         prev_status.light_pc = ui_status.light_pc;
         ui_progress(UI_UPDATE);
     } else if (ts == "livingroom/light_bench") {
         ui_status.light_bench = state ? true : false;
+
         prev_status.light_bench = ui_status.light_bench;
         ui_progress(UI_UPDATE);
     } else if (ts == "livingroom/light_amp") {
         ui_status.light_amp = state ? true : false;
+
         prev_status.light_amp = ui_status.light_amp;
         ui_progress(UI_UPDATE);
     } else if (ts == "livingroom/light_box") {
         ui_status.light_box = state ? true : false;
+
         prev_status.light_box = ui_status.light_box;
         ui_progress(UI_UPDATE);
     } else if (ts == "livingroom/light_corner/cmnd/POWER") {
         ui_status.light_corner = state ? true : false;
+
         prev_status.light_corner = ui_status.light_corner;
         ui_progress(UI_UPDATE);
     } else if (ts == "livingroom/workbench/cmnd/POWER") {
         ui_status.light_workspace = state ? true : false;
+
         prev_status.light_workspace = ui_status.light_workspace;
         ui_progress(UI_UPDATE);
     } else if (ts == "livingroom/amp/cmnd/POWER") {
         ui_status.sound_amplifier = state ? true : false;
+
         prev_status.sound_amplifier = ui_status.sound_amplifier;
+        ui_progress(UI_UPDATE);
+    } else if (ts == "livingroom/light_sink/cmnd/POWER") {
+        ui_status.light_sink = state ? true : false;
+
+        prev_status.light_sink = ui_status.light_sink;
+        ui_progress(UI_UPDATE);
+    } else if (ts == "livingroom/displays/cmnd/POWER") {
+        ui_status.pc_displays = state ? true : false;
+
+        prev_status.pc_displays = ui_status.pc_displays;
         ui_progress(UI_UPDATE);
     } else if (ts == "bathroom/force_light") {
         if (state == 0) {
@@ -172,15 +189,25 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         } else if (state == 4) {
             ui_status.bathroom_lights = BATH_LIGHT_NONE;
         }
+
         prev_status.bathroom_lights = ui_status.bathroom_lights;
         ui_progress(UI_UPDATE);
-    } else if (ts == "livingroom/light_sink/cmnd/POWER") {
-        ui_status.light_sink = state ? true : false;
-        prev_status.light_sink = ui_status.light_sink;
+    } else if (ts == "bathroom/force_fan") {
+        // TODO
+    } else if (ts == "bathroom/fan") {
+        ui_status.bathroom_fan = state ? true : false;
+
+        prev_status.bathroom_fan = ui_status.bathroom_fan;
         ui_progress(UI_UPDATE);
-    } else if (ts == "livingroom/displays/cmnd/POWER") {
-        ui_status.pc_displays = state ? true : false;
-        prev_status.pc_displays = ui_status.pc_displays;
+    } else if (ts == "bathroom/temperature") {
+        ui_status.bathroom_temperature = ps.toFloat();
+
+        prev_status.bathroom_temperature = ui_status.bathroom_temperature;
+        ui_progress(UI_UPDATE);
+    } else if (ts == "bathroom/humidity") {
+        ui_status.bathroom_humidity = ps.toFloat();
+
+        prev_status.bathroom_humidity = ui_status.bathroom_humidity;
         ui_progress(UI_UPDATE);
     }
 #endif // FEATURE_UI
@@ -254,9 +281,14 @@ static void mqttReconnect() {
         mqtt.subscribe("livingroom/light_corner/cmnd/POWER");
         mqtt.subscribe("livingroom/workbench/cmnd/POWER");
         mqtt.subscribe("livingroom/amp/cmnd/POWER");
-        mqtt.subscribe("bathroom/force_light");
         mqtt.subscribe("livingroom/light_sink/cmnd/POWER");
         mqtt.subscribe("livingroom/displays/cmnd/POWER");
+
+        mqtt.subscribe("bathroom/force_light");
+        //mqtt.subscribe("bathroom/force_fan");
+        mqtt.subscribe("bathroom/fan");
+        mqtt.subscribe("bathroom/temperature");
+        mqtt.subscribe("bathroom/humidity");
 #endif // FEATURE_UI
     }
 }
@@ -339,6 +371,10 @@ void writeMQTT_UI(void) {
     }
 
     prev_status = curr_status;
+}
+
+void writeMQTT_bath_fan_force(int time) {
+    mqttPublish("bathroom/force_fan", String(time, 10).c_str(), true);
 }
 #endif
 

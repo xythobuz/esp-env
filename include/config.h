@@ -15,7 +15,7 @@
 #define __ESP_ENV_CONFIG__
 
 // Sketch version
-#define ESP_ENV_VERSION "0.7.0"
+#define ESP_ENV_VERSION "0.7.1"
 
 // location of sensor, used in DB and hostname
 //#define SENSOR_LOCATION_LIVINGROOM

@@ -86,16 +86,29 @@ static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
 static TFT_eSPI tft = TFT_eSPI();
 
+enum ui_state ui_init_state = UI_INIT;
 struct ui_status ui_status = {0};
 
 enum ui_pages {
     UI_START = 0,
     UI_LIVINGROOM1,
     UI_LIVINGROOM2,
-    UI_BATHROOM,
+    UI_LIVINGROOM3,
+    UI_BATHROOM1,
+    UI_BATHROOM2,
     UI_INFO,
 
     UI_NUM_PAGES
+};
+
+const char *ui_page_names[UI_NUM_PAGES] = {
+    "Start",
+    "Livingroom Main",
+    "Livingroom Lights",
+    "Livingroom Misc",
+    "Bathroom Fan",
+    "Bathroom Lights",
+    "Info",
 };
 
 static enum ui_pages ui_page = UI_START;
@@ -106,6 +119,10 @@ static unsigned long last_touch_time = 0;
 static int curr_brightness = LCD_MAX_BRIGHTNESS;
 static int set_max_brightness = LCD_MAX_BRIGHTNESS;
 static unsigned long last_standby_draw = 0;
+
+static String ui_page_to_str(enum ui_pages page) {
+    return String(ui_page_names[page]);
+}
 
 static void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax = 255) {
     uint32_t duty = (4095 / valueMax) * min(value, valueMax);
@@ -186,7 +203,52 @@ static void draw_livingroom2(void) {
                 ui_status.light_box ? TFT_GREEN : TFT_RED);
 }
 
-static void draw_bathroom(void) {
+static void draw_livingroom3(void) {
+    // 1
+    draw_button("PC Displays",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.pc_displays ? TFT_GREEN : TFT_RED);
+}
+
+static void draw_bathroom1(void) {
+    String s_temp = "Temp.: ";
+    s_temp += String(ui_status.bathroom_temperature);
+    s_temp += "C";
+
+    String s_humid = "Humid.: ";
+    s_humid += String(ui_status.bathroom_humidity);
+    s_humid += "%";
+
+    // 1
+    draw_button("Bath Fan Status",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.bathroom_fan ? TFT_GREEN : TFT_RED);
+
+    // 2
+    draw_button("Bath Fan 120min",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                TFT_MAGENTA);
+
+    // 3
+    // empty
+
+    // 4
+    draw_button(s_temp.c_str(),
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2,
+                TFT_YELLOW);
+
+    // 5
+    draw_button(s_humid.c_str(),
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                TFT_YELLOW);
+}
+
+static void draw_bathroom2(void) {
     // 1
     draw_button("Bath Lights Auto",
                 BTNS_OFF_X + BTN_W / 2,
@@ -200,11 +262,7 @@ static void draw_bathroom(void) {
                 ui_status.bathroom_lights == BATH_LIGHT_BIG ? TFT_GREEN : TFT_RED);
 
     // 3
-    // TODO own page?
-    draw_button("PC Displays",
-                BTNS_OFF_X + BTN_W / 2,
-                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
-                ui_status.pc_displays ? TFT_GREEN : TFT_RED);
+    // empty
 
     // 4
     draw_button("Bath Lights Off",
@@ -293,11 +351,21 @@ void ui_init(void) {
 }
 
 static void ui_draw_menu(void) {
+    tft.fillScreen(TFT_BLACK);
+
+    tft.setTextDatum(TL_DATUM); // top left
+    tft.drawString(ui_page_to_str(ui_page), 0, 0, 1);
+
     switch (ui_page) {
         case UI_START:
-            tft.fillScreen(TFT_BLACK);
+#if defined(SENSOR_LOCATION_BATHROOM)
+            ui_page = UI_BATHROOM1;
+#else
             ui_page = UI_LIVINGROOM1;
-            // fall-through
+#endif
+
+            ui_draw_menu();
+            return;
 
         case UI_LIVINGROOM1:
             draw_livingroom1();
@@ -307,8 +375,16 @@ static void ui_draw_menu(void) {
             draw_livingroom2();
             break;
 
-        case UI_BATHROOM:
-            draw_bathroom();
+        case UI_LIVINGROOM3:
+            draw_livingroom3();
+            break;
+
+        case UI_BATHROOM1:
+            draw_bathroom1();
+            break;
+
+        case UI_BATHROOM2:
+            draw_bathroom2();
             break;
 
         case UI_INFO:
@@ -395,6 +471,8 @@ static void ui_calibrate_touchscreen(void) {
 }
 
 void ui_progress(enum ui_state state) {
+    ui_init_state = state;
+
     int x = LCD_WIDTH / 2;
     int y = LCD_HEIGHT / 2;
     int fontSize = 2;
@@ -461,40 +539,42 @@ void ui_run(void) {
         ui_page = UI_INFO;
     }
 
-    // read out LDR in regular intervals
-    if (now >= (last_ldr + LDR_CHECK_MS)) {
-        last_ldr = now;
-        float ldr = analogRead(LDR_PIN);
+    if (ui_init_state >= UI_READY) {
+        // read out LDR in regular intervals, when we're in the menu
+        if (now >= (last_ldr + LDR_CHECK_MS)) {
+            last_ldr = now;
+            float ldr = analogRead(LDR_PIN);
 
-        ldr_value = (ldr_value * (1.0f - LDR_LOWPASS_FACT)) + (ldr * LDR_LOWPASS_FACT);
+            ldr_value = (ldr_value * (1.0f - LDR_LOWPASS_FACT)) + (ldr * LDR_LOWPASS_FACT);
 
-        // adjust backlight according to ldr
-        int tmp = MIN(LDR_DARK_VALUE, MAX(0, ldr_value));
-        set_max_brightness = map(tmp, LDR_DARK_VALUE, LDR_BRIGHT_VALUE, LCD_MIN_BRIGHTNESS, LCD_MAX_BRIGHTNESS);
+            // adjust backlight according to ldr
+            int tmp = MIN(LDR_DARK_VALUE, MAX(0, ldr_value));
+            set_max_brightness = map(tmp, LDR_DARK_VALUE, LDR_BRIGHT_VALUE, LCD_MIN_BRIGHTNESS, LCD_MAX_BRIGHTNESS);
 
-        // refresh info page every 1s, it shows the LDR value
-        static int cnt = 0;
-        if ((ui_page == UI_INFO) && (++cnt >= (1000 / LDR_CHECK_MS))) {
-            cnt = 0;
-            ui_draw_menu();
+            // refresh info page every 1s, it shows the LDR value
+            static int cnt = 0;
+            if ((ui_page == UI_INFO) && (++cnt >= (1000 / LDR_CHECK_MS))) {
+                cnt = 0;
+                ui_draw_menu();
+            }
         }
-    }
 
-    // adjust backlight brightness
-    unsigned long diff = now - last_touch_time;
-    if ((diff < FULL_BRIGHT_MS) || (ui_page == UI_INFO))  {
-        curr_brightness = set_max_brightness;
-    } else if (diff < (FULL_BRIGHT_MS + NO_BRIGHT_MS)) {
-        curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, STANDBY_BRIGHTNESS);
-    } else {
-        if ((curr_brightness > STANDBY_BRIGHTNESS) || ((now - last_standby_draw) >= STANDBY_REDRAW_MS)) {
-            // enter standby screen
-            draw_standby();
-            last_standby_draw = now;
+        // adjust backlight brightness
+        unsigned long diff = now - last_touch_time;
+        if ((diff < FULL_BRIGHT_MS) || (ui_page == UI_INFO))  {
+            curr_brightness = set_max_brightness;
+        } else if (diff < (FULL_BRIGHT_MS + NO_BRIGHT_MS)) {
+            curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, STANDBY_BRIGHTNESS);
+        } else {
+            if ((curr_brightness > STANDBY_BRIGHTNESS) || ((now - last_standby_draw) >= STANDBY_REDRAW_MS)) {
+                // enter standby screen
+                draw_standby();
+                last_standby_draw = now;
+            }
+            curr_brightness = STANDBY_BRIGHTNESS;
         }
-        curr_brightness = STANDBY_BRIGHTNESS;
+        ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
     }
-    ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
 
     bool touched = ts.tirqTouched() && ts.touched();
     TS_Point p;
@@ -536,7 +616,9 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_corner);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_pc);
-            } else if (ui_page == UI_BATHROOM) {
+            } else if (ui_page == UI_LIVINGROOM3) {
+                INVERT_BOOL(ui_status.pc_displays);
+            } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_NONE;
             }
             writeMQTT_UI();
@@ -546,7 +628,9 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_workspace);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_bench);
-            } else if (ui_page == UI_BATHROOM) {
+            } else if (ui_page == UI_BATHROOM1) {
+                writeMQTT_bath_fan_force(120);
+            } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_BIG;
             }
             writeMQTT_UI();
@@ -556,8 +640,6 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_sink);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_kitchen);
-            } else if (ui_page == UI_BATHROOM) {
-                INVERT_BOOL(ui_status.pc_displays);
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
@@ -566,7 +648,7 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.sound_amplifier);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_amp);
-            } else if (ui_page == UI_BATHROOM) {
+            } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_OFF;
             }
             writeMQTT_UI();
@@ -593,7 +675,7 @@ void ui_run(void) {
                 }
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_box);
-            } else if (ui_page == UI_BATHROOM) {
+            } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_SMALL;
             }
             writeMQTT_UI();

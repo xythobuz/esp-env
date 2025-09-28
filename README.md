@@ -17,3 +17,8 @@ And [this blog post](https://www.xythobuz.de/lora_sml.html) for my LoRa SML smar
 Some more stuff about my setup can be found [here](https://www.xythobuz.de/smarthome.html).
 
 Mostly this is my simple playground with an Arduino platform compatible build system set up, to quickly try out things.
+
+OTA updating on ESP32 requires a manual reset afterwards. (?)
+
+Also remember to mod the LDR of CYDs.
+Remove R19 and replace R15 with 100k.

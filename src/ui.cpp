@@ -96,6 +96,7 @@ enum ui_pages {
     UI_LIVINGROOM3,
     UI_BATHROOM1,
     UI_BATHROOM2,
+    UI_BEDROOM,
     UI_INFO,
 
     UI_NUM_PAGES
@@ -105,9 +106,10 @@ const char *ui_page_names[UI_NUM_PAGES] = {
     "Start",
     "Livingroom Main",
     "Livingroom Lights",
-    "Livingroom Misc",
+    "Kitchen / Livingroom",
     "Bathroom Fan",
     "Bathroom Lights",
+    "Bedroom",
     "Info",
 };
 
@@ -150,16 +152,13 @@ static void draw_livingroom1(void) {
                 ui_status.light_workspace ? TFT_GREEN : TFT_RED);
 
     // 3
-    draw_button("Lights Sink",
+    draw_button("Sound Amp.",
                 BTNS_OFF_X + BTN_W / 2,
                 BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
-                ui_status.light_sink ? TFT_GREEN : TFT_RED);
+                ui_status.sound_amplifier ? TFT_GREEN : TFT_RED);
 
     // 4
-    draw_button("Sound Amp.",
-                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
-                BTNS_OFF_Y + BTN_H / 2,
-                ui_status.sound_amplifier ? TFT_GREEN : TFT_RED);
+    // empty
 
     // 5
     bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
@@ -185,10 +184,7 @@ static void draw_livingroom2(void) {
                 ui_status.light_bench ? TFT_GREEN : TFT_RED);
 
     // 3
-    draw_button("Lights Kitchen",
-                BTNS_OFF_X + BTN_W / 2,
-                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
-                ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
+    // empty
 
     // 4
     draw_button("Lights Amp.",
@@ -209,6 +205,24 @@ static void draw_livingroom3(void) {
                 BTNS_OFF_X + BTN_W / 2,
                 BTNS_OFF_Y + BTN_H / 2,
                 ui_status.pc_displays ? TFT_GREEN : TFT_RED);
+
+    // 2
+    // empty
+
+    // 3
+    draw_button("Lights Kitchen",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
+
+    // 4
+    draw_button("Lights Sink",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.light_sink ? TFT_GREEN : TFT_RED);
+
+    // 5
+    // empty
 }
 
 static void draw_bathroom1(void) {
@@ -275,6 +289,40 @@ static void draw_bathroom2(void) {
                 BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
                 BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
                 ui_status.bathroom_lights == BATH_LIGHT_SMALL ? TFT_GREEN : TFT_RED);
+}
+
+static void draw_bedroom(void) {
+    String s_temp = "Temp.: ";
+    s_temp += String(ui_status.bedroom_temperature);
+    s_temp += "C";
+
+    String s_humid = "Humid.: ";
+    s_humid += String(ui_status.bedroom_humidity);
+    s_humid += "%";
+
+    // 1
+    draw_button("Nightstand 1 Lights",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.light_nightstand1 ? TFT_GREEN : TFT_RED);
+
+    // 2
+    // empty
+
+    // 3
+    // empty
+
+    // 4
+    draw_button(s_temp.c_str(),
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2,
+                TFT_YELLOW);
+
+    // 5
+    draw_button(s_humid.c_str(),
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                TFT_YELLOW);
 }
 
 static void draw_info(void) {
@@ -360,6 +408,8 @@ static void ui_draw_menu(void) {
         case UI_START:
 #if defined(SENSOR_LOCATION_BATHROOM)
             ui_page = UI_BATHROOM1;
+#elif defined(SENSOR_LOCATION_BEDROOM)
+            ui_page = UI_BEDROOM;
 #else
             ui_page = UI_LIVINGROOM1;
 #endif
@@ -385,6 +435,10 @@ static void ui_draw_menu(void) {
 
         case UI_BATHROOM2:
             draw_bathroom2();
+            break;
+
+        case UI_BEDROOM:
+            draw_bedroom();
             break;
 
         case UI_INFO:
@@ -495,6 +549,15 @@ void ui_progress(enum ui_state state) {
             ) {
                 ui_calibrate_touchscreen();
             }
+
+            debug.print(F("Touch Calibrate: l="));
+            debug.print(config.touch_calibrate_left);
+            debug.print(F(" r="));
+            debug.print(config.touch_calibrate_right);
+            debug.print(F(" t="));
+            debug.print(config.touch_calibrate_top);
+            debug.print(F(" b="));
+            debug.println(config.touch_calibrate_bottom);
         } break;
 
         case UI_WIFI_CONNECT: {
@@ -620,6 +683,8 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.pc_displays);
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_NONE;
+            } else if (ui_page == UI_BEDROOM) {
+                INVERT_BOOL(ui_status.light_nightstand1);
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H + BTN_GAP)) && (p.y <= (BTNS_OFF_Y + BTN_H + BTN_GAP + BTN_H))) {
@@ -637,15 +702,15 @@ void ui_run(void) {
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
             // 3
             if (ui_page == UI_LIVINGROOM1) {
-                INVERT_BOOL(ui_status.light_sink);
-            } else if (ui_page == UI_LIVINGROOM2) {
+                INVERT_BOOL(ui_status.sound_amplifier);
+            } else if (ui_page == UI_LIVINGROOM3) {
                 INVERT_BOOL(ui_status.light_kitchen);
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
             // 4
-            if (ui_page == UI_LIVINGROOM1) {
-                INVERT_BOOL(ui_status.sound_amplifier);
+            if (ui_page == UI_LIVINGROOM3) {
+                INVERT_BOOL(ui_status.light_sink);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_amp);
             } else if (ui_page == UI_BATHROOM2) {
@@ -657,7 +722,8 @@ void ui_run(void) {
             if (ui_page == UI_LIVINGROOM1) {
                 bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
                         || ui_status.light_amp || ui_status.light_bench || ui_status.light_box
-                        || ui_status.light_kitchen || ui_status.light_pc || ui_status.pc_displays;
+                        || ui_status.light_kitchen || ui_status.light_pc || ui_status.pc_displays
+                        || ui_status.light_nightstand1;
                 if (on) {
                     ui_status.light_amp = false;
                     ui_status.light_kitchen = false;
@@ -667,6 +733,7 @@ void ui_run(void) {
                     ui_status.light_corner = false;
                     ui_status.light_box = false;
                     ui_status.light_sink = false;
+                    ui_status.light_nightstand1 = false;
                     ui_status.pc_displays = false;
                 } else {
                     ui_status.light_corner = true;

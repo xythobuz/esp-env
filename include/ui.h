@@ -30,6 +30,7 @@ enum bathroom_light_states {
 };
 
 struct ui_status {
+    // livingroom
     bool light_corner;
     bool light_workspace;
     bool light_kitchen;
@@ -41,6 +42,12 @@ struct ui_status {
     bool light_sink;
     bool pc_displays;
 
+    // bedroom
+    bool light_nightstand1;
+    float bedroom_humidity;
+    float bedroom_temperature;
+
+    // bathroom
     enum bathroom_light_states bathroom_lights;
     bool bathroom_fan;
     float bathroom_humidity;

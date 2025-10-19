@@ -15,16 +15,17 @@
 #define __ESP_ENV_CONFIG__
 
 // Sketch version
-#define ESP_ENV_VERSION "0.7.2"
+#define ESP_ENV_VERSION "0.7.3"
 
 // location of sensor, used in DB and hostname
+// should be defined on pio command line
 //#define SENSOR_LOCATION_LIVINGROOM
 //#define SENSOR_LOCATION_LIVINGROOM_WORKSPACE
 //#define SENSOR_LOCATION_LIVINGROOM_TV
 //#define SENSOR_LOCATION_BEDROOM
 //#define SENSOR_LOCATION_BATHROOM
 //#define SENSOR_LOCATION_GREENHOUSE
-#define SENSOR_LOCATION_TESTING
+//#define SENSOR_LOCATION_TESTING
 
 // WiFi AP settings
 #define WIFI_SSID "WIFI_SSID_HERE"
@@ -85,8 +86,7 @@
 #define SENSOR_LOCATION "testing"
 #define SENSOR_ID SENSOR_LOCATION
 #else
-#define SENSOR_LOCATION "unknown"
-#define SENSOR_ID SENSOR_LOCATION
+#error "Please define a SENSOR_LOCATION_x"
 #endif
 
 #if defined(RELAIS_SERIAL) || defined(RELAIS_GPIO)

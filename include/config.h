@@ -15,7 +15,7 @@
 #define __ESP_ENV_CONFIG__
 
 // Sketch version
-#define ESP_ENV_VERSION "0.7.1"
+#define ESP_ENV_VERSION "0.7.2"
 
 // location of sensor, used in DB and hostname
 //#define SENSOR_LOCATION_LIVINGROOM
@@ -59,10 +59,9 @@
 #define MQTT_RECONNECT_INTERVAL (5 * 1000)
 
 #define NTP_SERVER "pool.ntp.org"
-// TODO auto-detect?!
-//#warning hard-coded timezone and daylight savings offset
-#define gmtOffset_sec (60 * 60)
-#define daylightOffset_sec (60 * 60)
+
+//  https://remotemonitoringsystems.ca/time-zone-abbreviations.php
+#define NTP_TZ_LOCATION "CET-1CEST-2,M3.5.0/02:00:00,M10.5.0/03:00:00" // Berlin, Germany, Europe
 
 #if defined(SENSOR_LOCATION_LIVINGROOM)
 #define SENSOR_LOCATION "livingroom"

@@ -235,7 +235,9 @@ void setup() {
 
 #ifdef FEATURE_NTP
     // get time via NTP
-    configTime(gmtOffset_sec, daylightOffset_sec, NTP_SERVER);
+    configTime(0, 0, NTP_SERVER);
+    setenv("TZ", NTP_TZ_LOCATION, 1);
+    tzset();
 #endif
 
     debug.println(F("Seeding"));

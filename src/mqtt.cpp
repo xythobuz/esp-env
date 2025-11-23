@@ -224,6 +224,21 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
         prev_status.bathroom_humidity = ui_status.bathroom_humidity;
         ui_progress(UI_UPDATE);
+    } else if (ts == "bedroom/heated_blanket/cmnd/POWER") {
+        ui_status.bedroom_blanket = state ? true : false;
+
+        prev_status.bedroom_blanket = ui_status.bedroom_blanket;
+        ui_progress(UI_UPDATE);
+    } else if (ts == "livingroom/temperature") {
+        ui_status.livingroom_temperature = ps.toFloat();
+
+        prev_status.livingroom_temperature = ui_status.livingroom_temperature;
+        ui_progress(UI_UPDATE);
+    } else if (ts == "livingroom/humidity") {
+        ui_status.livingroom_humidity = ps.toFloat();
+
+        prev_status.livingroom_humidity = ui_status.livingroom_humidity;
+        ui_progress(UI_UPDATE);
     }
 #endif // FEATURE_UI
 
@@ -298,7 +313,10 @@ static void mqttReconnect() {
         mqtt.subscribe("livingroom/amp/cmnd/POWER");
         mqtt.subscribe("livingroom/light_sink/cmnd/POWER");
         mqtt.subscribe("livingroom/displays/cmnd/POWER");
+        mqtt.subscribe("livingroom/temperature");
+        mqtt.subscribe("livingroom/humidity");
 
+        mqtt.subscribe("bedroom/heated_blanket/cmnd/POWER");
         mqtt.subscribe("bedroom/nightstand1_light/cmnd/POWER");
         mqtt.subscribe("bedroom/temperature");
         mqtt.subscribe("bedroom/humidity");
@@ -390,6 +408,9 @@ void writeMQTT_UI(void) {
     }
     if (curr_status.light_nightstand1 != prev_status.light_nightstand1) {
         mqttPublish("bedroom/nightstand1_light/cmnd/POWER", curr_status.light_nightstand1 ? "on" : "off", true);
+    }
+    if (curr_status.bedroom_blanket != prev_status.bedroom_blanket) {
+        mqttPublish("bedroom/heated_blanket/cmnd/POWER", curr_status.bedroom_blanket ? "on" : "off", true);
     }
 
     prev_status = curr_status;

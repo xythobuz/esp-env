@@ -200,6 +200,14 @@ static void draw_livingroom2(void) {
 }
 
 static void draw_livingroom3(void) {
+    String s_temp = "Temp.: ";
+    s_temp += String(ui_status.livingroom_temperature);
+    s_temp += "C";
+
+    String s_humid = "Humid.: ";
+    s_humid += String(ui_status.livingroom_humidity);
+    s_humid += "%";
+
     // 1
     draw_button("PC Displays",
                 BTNS_OFF_X + BTN_W / 2,
@@ -207,22 +215,28 @@ static void draw_livingroom3(void) {
                 ui_status.pc_displays ? TFT_GREEN : TFT_RED);
 
     // 2
-    // empty
+    draw_button(s_temp.c_str(),
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                TFT_YELLOW);
 
     // 3
-    draw_button("Lights Kitchen",
+    draw_button(s_humid.c_str(),
                 BTNS_OFF_X + BTN_W / 2,
                 BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
-                ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
+                TFT_YELLOW);
 
     // 4
-    draw_button("Lights Sink",
+    draw_button("Lights Kitchen",
                 BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
                 BTNS_OFF_Y + BTN_H / 2,
-                ui_status.light_sink ? TFT_GREEN : TFT_RED);
+                ui_status.light_kitchen ? TFT_GREEN : TFT_RED);
 
     // 5
-    // empty
+    draw_button("Lights Sink",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.light_sink ? TFT_GREEN : TFT_RED);
 }
 
 static void draw_bathroom1(void) {
@@ -307,7 +321,10 @@ static void draw_bedroom(void) {
                 ui_status.light_nightstand1 ? TFT_GREEN : TFT_RED);
 
     // 2
-    // empty
+    draw_button("Heated Blanket",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.bedroom_blanket ? TFT_GREEN : TFT_RED);
 
     // 3
     // empty
@@ -697,22 +714,22 @@ void ui_run(void) {
                 writeMQTT_bath_fan_force(120);
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_BIG;
+            } else if (ui_page == UI_BEDROOM) {
+                // only show status of heated blanket
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
             // 3
             if (ui_page == UI_LIVINGROOM1) {
                 INVERT_BOOL(ui_status.sound_amplifier);
-            } else if (ui_page == UI_LIVINGROOM3) {
-                INVERT_BOOL(ui_status.light_kitchen);
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
             // 4
-            if (ui_page == UI_LIVINGROOM3) {
-                INVERT_BOOL(ui_status.light_sink);
-            } else if (ui_page == UI_LIVINGROOM2) {
+            if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_amp);
+            } else if (ui_page == UI_LIVINGROOM3) {
+                INVERT_BOOL(ui_status.light_kitchen);
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_OFF;
             }
@@ -742,6 +759,8 @@ void ui_run(void) {
                 }
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_box);
+            } else if (ui_page == UI_LIVINGROOM3) {
+                INVERT_BOOL(ui_status.light_sink);
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_SMALL;
             }

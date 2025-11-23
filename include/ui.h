@@ -41,8 +41,11 @@ struct ui_status {
     bool light_box;
     bool light_sink;
     bool pc_displays;
+    float livingroom_humidity;
+    float livingroom_temperature;
 
     // bedroom
+    bool bedroom_blanket;
     bool light_nightstand1;
     float bedroom_humidity;
     float bedroom_temperature;

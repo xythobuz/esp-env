@@ -399,6 +399,17 @@ void ui_init(void) {
     tft.init();
     tft.setRotation(1);
 
+#ifdef UI_LCD_TWO_USB_PORTS
+    // https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/issues/76
+    // https://github.com/Bodmer/TFT_eSPI/issues/2985
+    tft.invertDisplay(true);
+    tft.writecommand(ILI9341_GAMMASET); //Gamma curve selected
+    tft.writedata(2);
+    delay(120);
+    tft.writecommand(ILI9341_GAMMASET); //Gamma curve selected
+    tft.writedata(1);
+#endif // UI_LCD_TWO_USB_PORTS
+
     ledcSetup(LEDC_CHANNEL_0, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
     ledcAttachPin(TFT_BL, LEDC_CHANNEL_0);
     curr_brightness = set_max_brightness;

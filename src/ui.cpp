@@ -184,7 +184,12 @@ static void draw_livingroom2(void) {
                 ui_status.light_bench ? TFT_GREEN : TFT_RED);
 
     // 3
-    // empty
+    bool on = ui_status.light_amp || ui_status.light_bench || ui_status.light_box
+    || ui_status.light_kitchen || ui_status.light_pc;
+    draw_button(on ? "Big Lights Off" : "Big Lights On",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                TFT_MAGENTA);
 
     // 4
     draw_button("Lights Amp.",
@@ -733,6 +738,14 @@ void ui_run(void) {
             // 3
             if (ui_page == UI_LIVINGROOM1) {
                 INVERT_BOOL(ui_status.sound_amplifier);
+            } else if (ui_page == UI_LIVINGROOM2) {
+                bool on = ui_status.light_amp || ui_status.light_bench || ui_status.light_box
+                || ui_status.light_kitchen || ui_status.light_pc;
+                ui_status.light_amp = !on;
+                ui_status.light_bench = !on;
+                ui_status.light_box = !on;
+                ui_status.light_kitchen = !on;
+                ui_status.light_pc = !on;
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {

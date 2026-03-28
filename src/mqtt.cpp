@@ -112,7 +112,11 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
     int state = 0;
     if (ps.indexOf("on") != -1) {
         state = 1;
+    } else if (ps.indexOf("ON") != -1) {
+        state = 1;
     } else if (ps.indexOf("off") != -1) {
+        state = 0;
+    } else if (ps.indexOf("OFF") != -1) {
         state = 0;
     } else if (ps.indexOf("big") != -1) {
         state = 3;
@@ -239,6 +243,11 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
         prev_status.livingroom_humidity = ui_status.livingroom_humidity;
         ui_progress(UI_UPDATE);
+    } else if (ts == "wled/pc") {
+        ui_status.led_strip_pc = state ? true : false;
+
+        prev_status.led_strip_pc = ui_status.led_strip_pc;
+        ui_progress(UI_UPDATE);
     }
 #endif // FEATURE_UI
 
@@ -315,6 +324,7 @@ static void mqttReconnect() {
         mqtt.subscribe("livingroom/displays/cmnd/POWER");
         mqtt.subscribe("livingroom/temperature");
         mqtt.subscribe("livingroom/humidity");
+        mqtt.subscribe("wled/pc");
 
         mqtt.subscribe("bedroom/heated_blanket/cmnd/POWER");
         mqtt.subscribe("bedroom/nightstand1_light/cmnd/POWER");
@@ -411,6 +421,9 @@ void writeMQTT_UI(void) {
     }
     if (curr_status.bedroom_blanket != prev_status.bedroom_blanket) {
         mqttPublish("bedroom/heated_blanket/cmnd/POWER", curr_status.bedroom_blanket ? "on" : "off", true);
+    }
+    if (curr_status.led_strip_pc != prev_status.led_strip_pc) {
+        mqttPublish("wled/pc", curr_status.led_strip_pc ? "ON" : "OFF", true);
     }
 
     prev_status = curr_status;

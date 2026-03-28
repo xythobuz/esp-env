@@ -158,7 +158,10 @@ static void draw_livingroom1(void) {
                 ui_status.sound_amplifier ? TFT_GREEN : TFT_RED);
 
     // 4
-    // empty
+    draw_button("LED Strip",
+                BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
+                BTNS_OFF_Y + BTN_H / 2,
+                ui_status.led_strip_pc ? TFT_GREEN : TFT_RED);
 
     // 5
     bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
@@ -750,7 +753,9 @@ void ui_run(void) {
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
             // 4
-            if (ui_page == UI_LIVINGROOM2) {
+            if (ui_page == UI_LIVINGROOM1) {
+                INVERT_BOOL(ui_status.led_strip_pc);
+            } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_amp);
             } else if (ui_page == UI_LIVINGROOM3) {
                 INVERT_BOOL(ui_status.light_kitchen);
@@ -764,7 +769,7 @@ void ui_run(void) {
                 bool on = ui_status.light_corner || ui_status.light_sink || ui_status.light_workspace
                         || ui_status.light_amp || ui_status.light_bench || ui_status.light_box
                         || ui_status.light_kitchen || ui_status.light_pc || ui_status.pc_displays
-                        || ui_status.light_nightstand1;
+                        || ui_status.light_nightstand1 || ui_status.led_strip_pc;
                 if (on) {
                     ui_status.light_amp = false;
                     ui_status.light_kitchen = false;
@@ -776,10 +781,12 @@ void ui_run(void) {
                     ui_status.light_sink = false;
                     ui_status.light_nightstand1 = false;
                     ui_status.pc_displays = false;
+                    ui_status.led_strip_pc = false;
                 } else {
                     ui_status.light_corner = true;
                     ui_status.light_sink = true;
                     ui_status.pc_displays = true;
+                    ui_status.led_strip_pc = true;
                 }
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_box);

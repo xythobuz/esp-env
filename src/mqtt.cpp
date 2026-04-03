@@ -124,6 +124,8 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         state = 2;
     } else if (ps.indexOf("none") != -1) {
         state = 4;
+    } else if (ps.indexOf("both") != -1) {
+        state = 5;
     } else {
         state = -1;
     }
@@ -207,6 +209,8 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
             ui_status.bathroom_lights = BATH_LIGHT_BIG;
         } else if (state == 4) {
             ui_status.bathroom_lights = BATH_LIGHT_NONE;
+        } else if (state == 5) {
+            ui_status.bathroom_lights = BATH_LIGHT_BOTH;
         }
 
         prev_status.bathroom_lights = ui_status.bathroom_lights;
@@ -404,6 +408,8 @@ void writeMQTT_UI(void) {
             mqttPublish("bathroom/force_light", "big", true);
         } else if (curr_status.bathroom_lights == BATH_LIGHT_SMALL) {
             mqttPublish("bathroom/force_light", "small", true);
+        } else if (curr_status.bathroom_lights == BATH_LIGHT_BOTH) {
+            mqttPublish("bathroom/force_light", "both", true);
         } else if (curr_status.bathroom_lights == BATH_LIGHT_OFF) {
             mqttPublish("bathroom/force_light", "off", true);
         } else {

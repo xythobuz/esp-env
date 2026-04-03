@@ -23,10 +23,11 @@ String time_to_time_str(struct tm timeinfo);
 #ifdef FEATURE_UI
 
 enum bathroom_light_states {
-    BATH_LIGHT_OFF,
+    BATH_LIGHT_OFF = 0,
     BATH_LIGHT_NONE,
     BATH_LIGHT_BIG,
     BATH_LIGHT_SMALL,
+    BATH_LIGHT_BOTH,
 };
 
 struct ui_status {

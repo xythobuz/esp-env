@@ -298,7 +298,10 @@ static void draw_bathroom2(void) {
                 ui_status.bathroom_lights == BATH_LIGHT_BIG ? TFT_GREEN : TFT_RED);
 
     // 3
-    // empty
+    draw_button("Bath Lights Both",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                ui_status.bathroom_lights == BATH_LIGHT_BOTH ? TFT_GREEN : TFT_RED);
 
     // 4
     draw_button("Bath Lights Off",
@@ -439,6 +442,10 @@ static void ui_draw_menu(void) {
 
     tft.setTextDatum(TL_DATUM); // top left
     tft.drawString(ui_page_to_str(ui_page), 0, 0, 1);
+
+    tft.setTextDatum(TR_DATUM); // top right
+    String pos_s = String(ui_page) + " / " + String(UI_NUM_PAGES - 2);
+    tft.drawString(pos_s, TFT_HEIGHT - 1, 0, 1);
 
     switch (ui_page) {
         case UI_START:
@@ -749,6 +756,8 @@ void ui_run(void) {
                 ui_status.light_box = !on;
                 ui_status.light_kitchen = !on;
                 ui_status.light_pc = !on;
+            } else if (ui_page == UI_BATHROOM2) {
+                ui_status.bathroom_lights = BATH_LIGHT_BOTH;
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {

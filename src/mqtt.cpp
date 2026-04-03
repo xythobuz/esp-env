@@ -255,6 +255,13 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
 #endif // FEATURE_UI
 
+    if (ts.endsWith("esp_env/cmd")) {
+        if (ps == "reset") {
+            delay(1000);
+            ESP.restart();
+        }
+    }
+
 #ifdef FEATURE_RELAIS
     int id = -1;
 
@@ -341,6 +348,9 @@ static void mqttReconnect() {
         mqtt.subscribe("bathroom/temperature");
         mqtt.subscribe("bathroom/humidity");
 #endif // FEATURE_UI
+
+        mqtt.subscribe("esp_env/cmd");
+        mqtt.subscribe(SENSOR_LOCATION "/esp_env/cmd");
     }
 }
 

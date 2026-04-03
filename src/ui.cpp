@@ -443,9 +443,12 @@ static void ui_draw_menu(void) {
     tft.setTextDatum(TL_DATUM); // top left
     tft.drawString(ui_page_to_str(ui_page), 0, 0, 1);
 
+    tft.setTextColor(TFT_VIOLET, TFT_BLACK, true);
     tft.setTextDatum(TR_DATUM); // top right
     String pos_s = String(ui_page) + " / " + String(UI_NUM_PAGES - 2);
     tft.drawString(pos_s, TFT_HEIGHT - 1, 0, 1);
+
+    tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
 
     switch (ui_page) {
         case UI_START:

@@ -438,15 +438,36 @@ void ui_init(void) {
 }
 
 static void ui_draw_menu(void) {
-    tft.fillScreen(TFT_BLACK);
+    uint32_t bg_color;
+    switch (ui_page) {
+        case UI_LIVINGROOM1:
+        case UI_LIVINGROOM2:
+        case UI_LIVINGROOM3:
+            bg_color = TFT_DARKGREEN;
+            break;
 
-    tft.setTextDatum(TL_DATUM); // top left
-    tft.drawString(ui_page_to_str(ui_page), 0, 0, 1);
+        case UI_BATHROOM1:
+        case UI_BATHROOM2:
+            bg_color = TFT_DARKCYAN;
+            break;
 
-    tft.setTextColor(TFT_VIOLET, TFT_BLACK, true);
+        case UI_BEDROOM:
+            bg_color = TFT_NAVY;
+            break;
+
+        default:
+            bg_color = TFT_BLACK;
+            break;
+    }
+    tft.fillScreen(bg_color);
+    tft.setTextColor(TFT_WHITE, bg_color, true);
+
     tft.setTextDatum(TR_DATUM); // top right
     String pos_s = String(ui_page) + " / " + String(UI_NUM_PAGES - 2);
     tft.drawString(pos_s, TFT_HEIGHT - 1, 0, 1);
+
+    tft.setTextDatum(TL_DATUM); // top left
+    tft.drawString(ui_page_to_str(ui_page), 0, 0, 1);
 
     tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
 
@@ -703,7 +724,6 @@ void ui_run(void) {
 
         // skip touch event and just go back to full brightness
         if (curr_brightness < set_max_brightness) {
-            tft.fillScreen(TFT_BLACK); // exit standby screen
             ui_draw_menu(); // re-draw normal screen contents
             return ui_run(); // skip touch and increase brightness
         }
@@ -713,8 +733,6 @@ void ui_run(void) {
             do {
                 ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
             } while ((ui_page == UI_START) || (ui_page == UI_INFO));
-            tft.fillScreen(TFT_BLACK);
-
             ui_draw_menu();
             return;
         }
@@ -813,9 +831,7 @@ void ui_run(void) {
             do {
                 ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
             } while ((ui_page == UI_START) || (ui_page == UI_INFO));
-            tft.fillScreen(TFT_BLACK);
         }
-
         ui_draw_menu();
     } else if ((!touched) && is_touched && ((now - last_touch_time) >= MIN_TOUCH_DELAY_MS)) {
         is_touched = false;

@@ -125,7 +125,9 @@ static unsigned long last_standby_draw = 0;
 static unsigned long next_update_draw = 0;
 
 #include <StackArray.h>
-struct StrFoo{ char s[64]; };
+#include <StringSplitter.h>
+#define NOTIFY_STR_LEN 64
+struct StrFoo{ char s[NOTIFY_STR_LEN + 1]; };
 static StackArray<StrFoo> notifications;
 
 static String ui_page_to_str(enum ui_pages page) {
@@ -415,13 +417,9 @@ void ui_push_notification(String text) {
     debug.print("Got notification: ");
     debug.println(text);
 
-    // simulate a touch to increase brightness from standby mode
-    last_touch_time = millis();
-    curr_brightness = set_max_brightness;
-
     StrFoo tmp;
-    strncpy(tmp.s, text.c_str(), 64);
-    tmp.s[63] = '\0';
+    strncpy(tmp.s, text.c_str(), NOTIFY_STR_LEN);
+    tmp.s[NOTIFY_STR_LEN] = '\0';
     notifications.push(tmp);
 
     ui_progress(UI_NOTIFY);
@@ -555,7 +553,12 @@ static void ui_draw_notification(String notify_text) {
 
     tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
     tft.setTextDatum(MC_DATUM); // middle center
-    tft.drawString(notify_text, TFT_HEIGHT / 2, TFT_WIDTH / 2, 4);
+
+    StringSplitter split(notify_text, '\n', 5);
+    for (int i = 0; i < split.getItemCount(); i++) {
+        int32_t h = (TFT_WIDTH / 2) - (tft.fontHeight(4) * split.getItemCount() / 2) + (i * tft.fontHeight(4));
+        tft.drawString(split.getItemAtIndex(i), TFT_HEIGHT / 2, h, 4);
+    }
 }
 
 static void ui_draw_reticule(int x, int y, int l) {
@@ -796,7 +799,7 @@ void ui_run(void) {
                 ui_page = (enum ui_pages)((ui_page + 1) % UI_NUM_PAGES);
             } while ((ui_page == UI_START) || (ui_page == UI_INFO));
             ui_draw_menu();
-            return;
+            return ui_run();
         }
 
         if (ui_init_state == UI_NOTIFY) {
@@ -804,7 +807,7 @@ void ui_run(void) {
                 notifications.pop();
             }
             ui_progress(UI_NOTIFY);
-            return;
+            return ui_run();
         }
 
         if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {

@@ -51,6 +51,7 @@ struct ui_status {
     bool light_nightstand1;
     float bedroom_humidity;
     float bedroom_temperature;
+    bool led_strip_bed;
 
     // bathroom
     enum bathroom_light_states bathroom_lights;
@@ -69,12 +70,15 @@ enum ui_state {
     UI_WIFI_CONNECTED,
     UI_READY,
     UI_UPDATE,
+    UI_NOTIFY,
 };
 
 void ui_init(void);
 void ui_run(void);
 
 void ui_progress(enum ui_state state);
+
+void ui_push_notification(String text);
 
 #endif // FEATURE_UI
 

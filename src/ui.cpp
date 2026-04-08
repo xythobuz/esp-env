@@ -18,9 +18,10 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <Arduino.h>
+
 #ifdef FEATURE_UI
 
-#include <Arduino.h>
 #include <WiFi.h>
 
 #include "config.h"
@@ -121,6 +122,11 @@ static unsigned long last_touch_time = 0;
 static int curr_brightness = LCD_MAX_BRIGHTNESS;
 static int set_max_brightness = LCD_MAX_BRIGHTNESS;
 static unsigned long last_standby_draw = 0;
+static unsigned long next_update_draw = 0;
+
+#include <StackArray.h>
+struct StrFoo{ char s[64]; };
+static StackArray<StrFoo> notifications;
 
 static String ui_page_to_str(enum ui_pages page) {
     return String(ui_page_names[page]);
@@ -338,7 +344,10 @@ static void draw_bedroom(void) {
                 ui_status.bedroom_blanket ? TFT_GREEN : TFT_RED);
 
     // 3
-    // empty
+    draw_button("LED Strip Bed",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                ui_status.led_strip_bed ? TFT_GREEN : TFT_RED);
 
     // 4
     draw_button(s_temp.c_str(),
@@ -400,6 +409,22 @@ static void draw_standby(void) {
 
     tft.setTextDatum(BC_DATUM); // bottom center
     tft.drawString("Touch to begin...", LCD_WIDTH / 2, LCD_HEIGHT, 2);
+}
+
+void ui_push_notification(String text) {
+    debug.print("Got notification: ");
+    debug.println(text);
+
+    // simulate a touch to increase brightness from standby mode
+    last_touch_time = millis();
+    curr_brightness = set_max_brightness;
+
+    StrFoo tmp;
+    strncpy(tmp.s, text.c_str(), 64);
+    tmp.s[63] = '\0';
+    notifications.push(tmp);
+
+    ui_progress(UI_NOTIFY);
 }
 
 void ui_init(void) {
@@ -521,6 +546,18 @@ static void ui_draw_menu(void) {
     draw_button("Next...", BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP, BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2, TFT_CYAN);
 }
 
+static void ui_draw_notification(String notify_text) {
+    tft.fillScreen(TFT_MAROON);
+    tft.setTextColor(TFT_WHITE, TFT_MAROON, true);
+
+    tft.setTextDatum(TC_DATUM); // top center
+    tft.drawString("Notification", TFT_HEIGHT / 2, 0, 2);
+
+    tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
+    tft.setTextDatum(MC_DATUM); // middle center
+    tft.drawString(notify_text, TFT_HEIGHT / 2, TFT_WIDTH / 2, 4);
+}
+
 static void ui_draw_reticule(int x, int y, int l) {
     tft.drawFastHLine(x - l / 2, y, l, TFT_RED);
     tft.drawFastVLine(x, y - l / 2, l, TFT_RED);
@@ -592,8 +629,6 @@ static void ui_calibrate_touchscreen(void) {
 }
 
 void ui_progress(enum ui_state state) {
-    ui_init_state = state;
-
     int x = LCD_WIDTH / 2;
     int y = LCD_HEIGHT / 2;
     int fontSize = 2;
@@ -655,55 +690,82 @@ void ui_progress(enum ui_state state) {
 
         case UI_UPDATE: {
             if (curr_brightness >= set_max_brightness) {
-                ui_draw_menu();
+                next_update_draw = millis();
             }
         } break;
+
+        case UI_NOTIFY: {
+            if (!notifications.isEmpty()) {
+                ui_draw_notification(notifications.peek().s);
+            } else {
+                ui_draw_menu();
+                state = UI_UPDATE;
+                ui_init_state = UI_UPDATE;
+            }
+        } break;
+    }
+
+    if (ui_init_state != UI_NOTIFY) {
+        ui_init_state = state;
     }
 }
 
 void ui_run(void) {
     unsigned long now = millis();
 
-    // go to info page when BOOT button is pressed
-    if (!digitalRead(BTN_PIN)) {
-        ui_page = UI_INFO;
-    }
-
-    if (ui_init_state >= UI_READY) {
-        // read out LDR in regular intervals, when we're in the menu
-        if (now >= (last_ldr + LDR_CHECK_MS)) {
-            last_ldr = now;
-            float ldr = analogRead(LDR_PIN);
-
-            ldr_value = (ldr_value * (1.0f - LDR_LOWPASS_FACT)) + (ldr * LDR_LOWPASS_FACT);
-
-            // adjust backlight according to ldr
-            int tmp = MIN(LDR_DARK_VALUE, MAX(0, ldr_value));
-            set_max_brightness = map(tmp, LDR_DARK_VALUE, LDR_BRIGHT_VALUE, LCD_MIN_BRIGHTNESS, LCD_MAX_BRIGHTNESS);
-
-            // refresh info page every 1s, it shows the LDR value
-            static int cnt = 0;
-            if ((ui_page == UI_INFO) && (++cnt >= (1000 / LDR_CHECK_MS))) {
-                cnt = 0;
-                ui_draw_menu();
-            }
-        }
-
-        // adjust backlight brightness
-        unsigned long diff = now - last_touch_time;
-        if ((diff < FULL_BRIGHT_MS) || (ui_page == UI_INFO))  {
-            curr_brightness = set_max_brightness;
-        } else if (diff < (FULL_BRIGHT_MS + NO_BRIGHT_MS)) {
-            curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, STANDBY_BRIGHTNESS);
-        } else {
-            if ((curr_brightness > STANDBY_BRIGHTNESS) || ((now - last_standby_draw) >= STANDBY_REDRAW_MS)) {
-                // enter standby screen
-                draw_standby();
-                last_standby_draw = now;
-            }
-            curr_brightness = STANDBY_BRIGHTNESS;
-        }
+    if (ui_init_state == UI_NOTIFY) {
+        // blink backlight
+        curr_brightness = ((now % 1500) < 500) ? LCD_MIN_BRIGHTNESS : LCD_MAX_BRIGHTNESS;
         ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
+    } else {
+        if (next_update_draw > 0) {
+            if ((now - next_update_draw) > 1000) {
+                ui_draw_menu();
+                next_update_draw = 0;
+            }
+        }
+
+        // go to info page when BOOT button is pressed
+        if (!digitalRead(BTN_PIN)) {
+            ui_page = UI_INFO;
+        }
+
+        if (ui_init_state >= UI_READY) {
+            // read out LDR in regular intervals, when we're in the menu
+            if (now >= (last_ldr + LDR_CHECK_MS)) {
+                last_ldr = now;
+                float ldr = analogRead(LDR_PIN);
+
+                ldr_value = (ldr_value * (1.0f - LDR_LOWPASS_FACT)) + (ldr * LDR_LOWPASS_FACT);
+
+                // adjust backlight according to ldr
+                int tmp = MIN(LDR_DARK_VALUE, MAX(0, ldr_value));
+                set_max_brightness = map(tmp, LDR_DARK_VALUE, LDR_BRIGHT_VALUE, LCD_MIN_BRIGHTNESS, LCD_MAX_BRIGHTNESS);
+
+                // refresh info page every 1s, it shows the LDR value
+                static int cnt = 0;
+                if ((ui_page == UI_INFO) && (++cnt >= (1000 / LDR_CHECK_MS))) {
+                    cnt = 0;
+                    ui_draw_menu();
+                }
+            }
+
+            // adjust backlight brightness
+            unsigned long diff = now - last_touch_time;
+            if ((diff < FULL_BRIGHT_MS) || (ui_page == UI_INFO))  {
+                curr_brightness = set_max_brightness;
+            } else if (diff < (FULL_BRIGHT_MS + NO_BRIGHT_MS)) {
+                curr_brightness = map(diff - FULL_BRIGHT_MS, 0, NO_BRIGHT_MS, set_max_brightness, STANDBY_BRIGHTNESS);
+            } else {
+                if ((curr_brightness > STANDBY_BRIGHTNESS) || ((now - last_standby_draw) >= STANDBY_REDRAW_MS)) {
+                    // enter standby screen
+                    draw_standby();
+                    last_standby_draw = now;
+                }
+                curr_brightness = STANDBY_BRIGHTNESS;
+            }
+            ledcAnalogWrite(LEDC_CHANNEL_0, curr_brightness);
+        }
     }
 
     bool touched = ts.tirqTouched() && ts.touched();
@@ -737,6 +799,14 @@ void ui_run(void) {
             return;
         }
 
+        if (ui_init_state == UI_NOTIFY) {
+            if (!notifications.isEmpty()) {
+                notifications.pop();
+            }
+            ui_progress(UI_NOTIFY);
+            return;
+        }
+
         if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
             // 1
             if (ui_page == UI_LIVINGROOM1) {
@@ -762,7 +832,7 @@ void ui_run(void) {
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_BIG;
             } else if (ui_page == UI_BEDROOM) {
-                // only show status of heated blanket
+                INVERT_BOOL(ui_status.bedroom_blanket);
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X) && (p.x <= BTNS_OFF_X + BTN_W) && (p.y >= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2)) && (p.y <= (BTNS_OFF_Y + BTN_H * 2 + BTN_GAP * 2 + BTN_H))) {
@@ -779,6 +849,8 @@ void ui_run(void) {
                 ui_status.light_pc = !on;
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_BOTH;
+            } else if (ui_page == UI_BEDROOM) {
+                INVERT_BOOL(ui_status.led_strip_bed);
             }
             writeMQTT_UI();
         } else if ((p.x >= BTNS_OFF_X + BTN_W + BTN_GAP) && (p.x <= BTNS_OFF_X + BTN_W + BTN_GAP + BTN_W) && (p.y >= BTNS_OFF_Y) && (p.y <= BTNS_OFF_Y + BTN_H)) {
@@ -812,6 +884,7 @@ void ui_run(void) {
                     ui_status.light_nightstand1 = false;
                     ui_status.pc_displays = false;
                     ui_status.led_strip_pc = false;
+                    ui_status.led_strip_bed = false;
                 } else {
                     ui_status.light_corner = true;
                     ui_status.light_sink = true;

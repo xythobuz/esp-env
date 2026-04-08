@@ -22,4 +22,8 @@ void writeMQTT_UI(void);
 void writeMQTT_bath_fan_force(int time);
 #endif // FEATURE_UI
 
+#ifdef FEATURE_RINGER
+void writeMQTT_ringer(bool state);
+#endif // FEATURE_RINGER
+
 #endif // __MQTT_H__

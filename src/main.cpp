@@ -41,10 +41,18 @@ unsigned long last_led_blink_time = 0;
 
 ConfigMemory config;
 
+#ifdef FEATURE_RINGER
+#include <debounce.h>
+static void ringer_callback(uint8_t id, uint8_t state) {
+    debug.print("Ringer state now ");
+    debug.println((state == BTN_PRESSED) ? "ON" : "OFF");
+    writeMQTT_ringer(state == BTN_PRESSED);
+}
+static Button ringer(0, ringer_callback);
+#endif // FEATURE_RINGER
+
 #if defined(ARDUINO_ARCH_ESP8266)
-
 WiFiEventHandler disconnectHandler;
-
 void onDisconnected(const WiFiEventStationModeDisconnected& event) {
     /*
      * simply restart in case we lose wifi connection
@@ -52,7 +60,6 @@ void onDisconnected(const WiFiEventStationModeDisconnected& event) {
      */
     ESP.restart();
 }
-
 #endif // ARDUINO_ARCH_ESP8266
 
 void setup() {
@@ -254,6 +261,14 @@ void setup() {
 
 #endif // FEATURE_DISABLE_WIFI
 
+#ifdef FEATURE_RINGER
+    debug.println(F("Ringer"));
+    pinMode(RINGER_PIN, INPUT_PULLUP);
+    ringer.setPushDebounceInterval(RINGER_DEBOUNCE_PUSH_MS);
+    ringer.setReleaseDebounceInterval(RINGER_DEBOUNCE_RELEASE_MS);
+    writeMQTT_ringer(false);
+#endif // FEATURE_RINGER
+
     debug.println(F("Ready! Starting..."));
 
 #ifdef FEATURE_UI
@@ -297,4 +312,8 @@ void loop() {
         digitalWrite(BUILTIN_LED_PIN, !digitalRead(BUILTIN_LED_PIN));
     }
 #endif // ! FEATURE_LORA
+
+#ifdef FEATURE_RINGER
+    ringer.update(!digitalRead(RINGER_PIN));
+#endif // FEATURE_RINGER
 }

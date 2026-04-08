@@ -252,6 +252,11 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
         prev_status.led_strip_pc = ui_status.led_strip_pc;
         ui_progress(UI_UPDATE);
+    } else if (ts == "wled/bed") {
+        ui_status.led_strip_bed = state ? true : false;
+
+        prev_status.led_strip_bed = ui_status.led_strip_bed;
+        ui_progress(UI_UPDATE);
     }
 #endif // FEATURE_UI
 
@@ -260,6 +265,12 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
             delay(1000);
             ESP.restart();
         }
+    } else if (ts.endsWith("esp_env/notify")) {
+#ifdef FEATURE_UI
+        if (ps.length() > 0) {
+            ui_push_notification(ps);
+        }
+#endif // FEATURE_UI
     }
 
 #ifdef FEATURE_RELAIS
@@ -341,6 +352,7 @@ static void mqttReconnect() {
         mqtt.subscribe("bedroom/nightstand1_light/cmnd/POWER");
         mqtt.subscribe("bedroom/temperature");
         mqtt.subscribe("bedroom/humidity");
+        mqtt.subscribe("wled/bed");
 
         mqtt.subscribe("bathroom/force_light");
         //mqtt.subscribe("bathroom/force_fan");
@@ -351,6 +363,9 @@ static void mqttReconnect() {
 
         mqtt.subscribe("esp_env/cmd");
         mqtt.subscribe(SENSOR_LOCATION "/esp_env/cmd");
+
+        mqtt.subscribe("esp_env/notify");
+        mqtt.subscribe(SENSOR_LOCATION "/esp_env/notify");
     }
 }
 
@@ -375,8 +390,7 @@ void runMQTT() {
     mqtt.loop();
 }
 
-#ifdef FEATURE_UI
-
+#if defined (FEATURE_UI) || defined(FEATURE_RINGER)
 static void mqttPublish(const char* ts, const char *ps, bool retained) {
     debug.print(F("MQTT  Tx&gt; @ \""));
     debug.print(ts);
@@ -385,7 +399,23 @@ static void mqttPublish(const char* ts, const char *ps, bool retained) {
     debug.println(F("\""));
     mqtt.publish(ts, ps, retained);
 }
+#endif // defined (FEATURE_UI) || defined(FEATURE_RINGER)
 
+#ifdef FEATURE_RINGER
+void writeMQTT_ringer(bool state) {
+    if (state) {
+        String s = "Doorbell ringing!";
+        struct tm timeinfo;
+        if (getLocalTime(&timeinfo)) {
+            s += "\n@\n";
+            s += time_to_time_str(timeinfo);
+        }
+        mqttPublish("esp_env/notify", s.c_str(), false);
+    }
+}
+#endif // FEATURE_RINGER
+
+#ifdef FEATURE_UI
 void writeMQTT_UI(void) {
     struct ui_status curr_status = ui_status;
 
@@ -440,6 +470,9 @@ void writeMQTT_UI(void) {
     }
     if (curr_status.led_strip_pc != prev_status.led_strip_pc) {
         mqttPublish("wled/pc", curr_status.led_strip_pc ? "ON" : "OFF", true);
+    }
+    if (curr_status.led_strip_bed != prev_status.led_strip_bed) {
+        mqttPublish("wled/bed", curr_status.led_strip_bed ? "ON" : "OFF", true);
     }
 
     prev_status = curr_status;

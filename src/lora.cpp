@@ -104,6 +104,10 @@ static struct sml_cache cache[LORA_SML_NUM_MESSAGES];
 
 void lora_oled_init(void) {
     heltec_setup();
+
+#ifndef FEATURE_SML
+    display.resetOrientation();
+#endif // ! FEATURE_SML
 }
 
 void lora_oled_print(String s) {

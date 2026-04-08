@@ -15,7 +15,7 @@
 #define __ESP_ENV_CONFIG__
 
 // Sketch version
-#define ESP_ENV_VERSION "0.7.9"
+#define ESP_ENV_VERSION "0.7.10"
 
 // location of sensor, used in DB and hostname
 // should be defined on pio command line
@@ -97,6 +97,12 @@
 #if defined(MOISTURE_ADC_ESP32) || defined(MOISTURE_ADC_ARDUINO)
 #define FEATURE_MOISTURE
 #endif
+
+#ifdef FEATURE_RINGER
+#define RINGER_PIN 45
+#define RINGER_DEBOUNCE_PUSH_MS 500
+#define RINGER_DEBOUNCE_RELEASE_MS (30 * 1000)
+#endif // FEATURE_RINGER
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
 #define BUILTIN_LED_PIN 1

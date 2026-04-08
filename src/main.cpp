@@ -314,6 +314,6 @@ void loop() {
 #endif // ! FEATURE_LORA
 
 #ifdef FEATURE_RINGER
-    ringer.update(!digitalRead(RINGER_PIN));
+    ringer.update(digitalRead(RINGER_PIN));
 #endif // FEATURE_RINGER
 }

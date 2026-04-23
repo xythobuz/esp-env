@@ -406,8 +406,11 @@ static void draw_standby(void) {
     }
 
     tft.setTextDatum(MC_DATUM); // middle center
+    uint16_t tp = tft.getTextPadding();
+    tft.setTextPadding(10);
     tft.drawString(date, LCD_WIDTH / 2, LCD_HEIGHT / 2 - 16, 4);
     tft.drawString(time, LCD_WIDTH / 2, LCD_HEIGHT / 2 + 32, 6);
+    tft.setTextPadding(tp);
 
     tft.setTextDatum(BC_DATUM); // bottom center
     tft.drawString("Touch to begin...", LCD_WIDTH / 2, LCD_HEIGHT, 2);

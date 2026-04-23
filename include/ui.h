@@ -79,6 +79,7 @@ void ui_run(void);
 void ui_progress(enum ui_state state);
 
 void ui_push_notification(String text);
+void ui_clear_notification(void);
 
 #endif // FEATURE_UI
 

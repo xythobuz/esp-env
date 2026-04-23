@@ -428,6 +428,17 @@ void ui_push_notification(String text) {
     ui_progress(UI_NOTIFY);
 }
 
+void ui_clear_notification(void) {
+    debug.println("Clear notifications");
+
+    while (!notifications.isEmpty()) {
+        notifications.pop();
+    }
+
+    last_touch_time = millis();
+    ui_progress(UI_NOTIFY);
+}
+
 void ui_init(void) {
     mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     ts.begin(mySpi);
@@ -809,6 +820,12 @@ void ui_run(void) {
             if (!notifications.isEmpty()) {
                 notifications.pop();
             }
+
+            // clear notifications from other CYD UIs as well
+            if (notifications.isEmpty()) {
+                writeMQTT_ui_clear_notification();
+            }
+
             ui_progress(UI_NOTIFY);
             return ui_run();
         }

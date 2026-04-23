@@ -15,7 +15,7 @@
 #define __ESP_ENV_CONFIG__
 
 // Sketch version
-#define ESP_ENV_VERSION "0.7.11"
+#define ESP_ENV_VERSION "0.7.12"
 
 // location of sensor, used in DB and hostname
 // should be defined on pio command line

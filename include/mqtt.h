@@ -18,6 +18,7 @@ void initMQTT();
 void runMQTT();
 
 #ifdef FEATURE_UI
+void writeMQTT_ui_clear_notification(void);
 void writeMQTT_UI(void);
 void writeMQTT_bath_fan_force(int time);
 #endif // FEATURE_UI

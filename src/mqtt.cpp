@@ -264,6 +264,10 @@ static void mqttCallback(char* topic, byte* payload, unsigned int length) {
         if (ps == "reset") {
             delay(1000);
             ESP.restart();
+#ifdef FEATURE_UI
+        } else if (ps == "clear") {
+            ui_clear_notification();
+#endif // FEATURE_UI
         }
     } else if (ts.endsWith("esp_env/notify")) {
 #ifdef FEATURE_UI
@@ -416,6 +420,10 @@ void writeMQTT_ringer(bool state) {
 #endif // FEATURE_RINGER
 
 #ifdef FEATURE_UI
+void writeMQTT_ui_clear_notification(void) {
+    mqttPublish("esp_env/cmd", "clear", false);
+}
+
 void writeMQTT_UI(void) {
     struct ui_status curr_status = ui_status;
 

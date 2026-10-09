@@ -22,5 +22,8 @@ PLATFORMIO_BUILD_FLAGS="-DSENSOR_LOCATION_BATHROOM" pio run -e cyd -t upload --u
 echo "Flashing Bedroom"
 PLATFORMIO_BUILD_FLAGS="-DSENSOR_LOCATION_BEDROOM" pio run -e cyd -t upload --upload-port=cyd-bedroom
 
+echo "Flashing Kitchen"
+PLATFORMIO_BUILD_FLAGS="-DSENSOR_LOCATION_KITCHEN" pio run -e cyd -t upload --upload-port=cyd-kitchen
+
 echo "Restore CYD compile_commands.json"
 PLATFORMIO_BUILD_FLAGS="-DSENSOR_LOCATION_LIVINGROOM" pio run -e cyd -t compiledb

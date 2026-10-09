@@ -407,7 +407,7 @@ static void draw_standby(void) {
 
     tft.setTextDatum(MC_DATUM); // middle center
     uint16_t tp = tft.getTextPadding();
-    tft.setTextPadding(10);
+    tft.setTextPadding(50);
     tft.drawString(date, LCD_WIDTH / 2, LCD_HEIGHT / 2 - 16, 4);
     tft.drawString(time, LCD_WIDTH / 2, LCD_HEIGHT / 2 + 32, 6);
     tft.setTextPadding(tp);
@@ -514,6 +514,8 @@ static void ui_draw_menu(void) {
             ui_page = UI_BATHROOM1;
 #elif defined(SENSOR_LOCATION_BEDROOM)
             ui_page = UI_BEDROOM;
+#elif defined(SENSOR_LOCATION_KITCHEN)
+            ui_page = UI_LIVINGROOM3;
 #else
             ui_page = UI_LIVINGROOM1;
 #endif

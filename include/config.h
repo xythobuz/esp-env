@@ -22,6 +22,7 @@
 //#define SENSOR_LOCATION_LIVINGROOM
 //#define SENSOR_LOCATION_LIVINGROOM_WORKSPACE
 //#define SENSOR_LOCATION_LIVINGROOM_TV
+//#define SENSOR_LOCATION_KITCHEN
 //#define SENSOR_LOCATION_BEDROOM
 //#define SENSOR_LOCATION_BATHROOM
 //#define SENSOR_LOCATION_GREENHOUSE
@@ -73,6 +74,10 @@
 #elif defined(SENSOR_LOCATION_LIVINGROOM_TV)
 #define SENSOR_LOCATION "livingroom"
 #define SENSOR_ID "livingroom-tv"
+#elif defined(SENSOR_LOCATION_KITCHEN)
+#define SENSOR_LOCATION "kitchen"
+#define SENSOR_ID "kitchen"
+#define UI_LCD_TWO_USB_PORTS
 #elif defined(SENSOR_LOCATION_BEDROOM)
 #define SENSOR_LOCATION "bedroom"
 #define SENSOR_ID SENSOR_LOCATION
@@ -85,7 +90,6 @@
 #elif defined(SENSOR_LOCATION_TESTING)
 #define SENSOR_LOCATION "testing"
 #define SENSOR_ID SENSOR_LOCATION
-#define UI_LCD_TWO_USB_PORTS
 #else
 #error "Please define a SENSOR_LOCATION_x"
 #endif

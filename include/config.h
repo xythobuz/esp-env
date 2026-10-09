@@ -78,6 +78,7 @@
 #define SENSOR_LOCATION "kitchen"
 #define SENSOR_ID "kitchen"
 #define UI_LCD_TWO_USB_PORTS
+#define UI_LCD_ROTATE_180
 #elif defined(SENSOR_LOCATION_BEDROOM)
 #define SENSOR_LOCATION "bedroom"
 #define SENSOR_ID SENSOR_LOCATION

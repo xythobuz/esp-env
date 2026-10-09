@@ -442,10 +442,16 @@ void ui_clear_notification(void) {
 void ui_init(void) {
     mySpi.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
     ts.begin(mySpi);
-    ts.setRotation(1);
 
     tft.init();
+
+#ifdef UI_LCD_ROTATE_180
+    ts.setRotation(3);
+    tft.setRotation(3);
+#else
+    ts.setRotation(1);
     tft.setRotation(1);
+#endif
 
 #ifdef UI_LCD_TWO_USB_PORTS
     // https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display/issues/76

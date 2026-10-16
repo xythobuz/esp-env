@@ -83,6 +83,8 @@
 #error STANDBY_BRIGHTNESS needs to be bigger than LCD_MIN_BRIGHTNESS
 #endif
 
+#define TFT_DARKORANGE  tft.color565(255 / 2, 180 / 2, 0)
+
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
 static TFT_eSPI tft = TFT_eSPI();
@@ -95,6 +97,7 @@ enum ui_pages {
     UI_LIVINGROOM1,
     UI_LIVINGROOM2,
     UI_LIVINGROOM3,
+    UI_COFFEE,
     UI_BATHROOM1,
     UI_BATHROOM2,
     UI_BEDROOM,
@@ -123,6 +126,8 @@ static int curr_brightness = LCD_MAX_BRIGHTNESS;
 static int set_max_brightness = LCD_MAX_BRIGHTNESS;
 static unsigned long last_standby_draw = 0;
 static unsigned long next_update_draw = 0;
+static bool coffee_timer_running = false;
+static unsigned long coffee_timer_start = 0;
 
 #include <StackArray.h>
 #include <StringSplitter.h>
@@ -139,8 +144,11 @@ static void ledcAnalogWrite(uint8_t channel, uint32_t value, uint32_t valueMax =
     ledcWrite(channel, duty);
 }
 
-static void draw_button(const char *name, uint32_t x, uint32_t y, uint32_t color) {
-    tft.fillRect(x - BTN_W / 2, y - BTN_H / 2, BTN_W, BTN_H, color);
+static void draw_button(const char *name,
+                        uint32_t x, uint32_t y,
+                        uint32_t color,
+                        uint32_t w = BTN_W, uint32_t h = BTN_H) {
+    tft.fillRect(x - w / 2, y - h / 2, w, h, color);
 
     tft.setTextDatum(MC_DATUM); // middle center
     tft.drawString(name, x, y, 2);
@@ -253,6 +261,42 @@ static void draw_livingroom3(void) {
                 BTNS_OFF_X + BTN_W / 2 + BTN_W + BTN_GAP,
                 BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
                 ui_status.light_sink ? TFT_GREEN : TFT_RED);
+}
+
+static void draw_coffee(void) {
+    if (coffee_timer_running) {
+        unsigned long t_ms = millis() - coffee_timer_start;
+        unsigned long t_s = t_ms / 1000;
+        unsigned long t_min = t_s / 60;
+        String s = "Elapsed: " + String(t_min) + "min " + String(t_s % 60) + "sec";
+
+        // 1 & 4
+        draw_button(s.c_str(),
+                    BTNS_OFF_X + BTN_W + BTN_GAP / 2,
+                    BTNS_OFF_Y + BTN_H / 2,
+                    (t_s < (4 * 60)) ? TFT_RED : TFT_GREEN,
+                    BTN_W * 2 + BTN_GAP, BTN_H);
+    } else {
+        // 1 & 4
+        draw_button("Timer Stopped",
+                    BTNS_OFF_X + BTN_W + BTN_GAP / 2,
+                    BTNS_OFF_Y + BTN_H / 2,
+                    TFT_YELLOW,
+                    BTN_W * 2 + BTN_GAP, BTN_H);
+    }
+
+    // 2 & 5
+    draw_button("Lights Kitchen",
+                BTNS_OFF_X + BTN_W + BTN_GAP / 2,
+                BTNS_OFF_Y + BTN_H / 2 + BTN_H + BTN_GAP,
+                ui_status.light_kitchen ? TFT_GREEN : TFT_RED,
+                BTN_W * 2 + BTN_GAP, BTN_H);
+
+    // 3
+    draw_button(coffee_timer_running ? "Stop" : "Start",
+                BTNS_OFF_X + BTN_W / 2,
+                BTNS_OFF_Y + BTN_H / 2 + (BTN_H + BTN_GAP) * 2,
+                TFT_MAGENTA);
 }
 
 static void draw_bathroom1(void) {
@@ -481,27 +525,38 @@ void ui_init(void) {
 }
 
 static void ui_draw_menu(void) {
-    uint32_t bg_color;
-    switch (ui_page) {
-        case UI_LIVINGROOM1:
-        case UI_LIVINGROOM2:
-        case UI_LIVINGROOM3:
-            bg_color = TFT_DARKGREEN;
-            break;
+    uint32_t bg_color = TFT_BLACK;
 
-        case UI_BATHROOM1:
-        case UI_BATHROOM2:
-            bg_color = TFT_DARKCYAN;
-            break;
+    struct tm timeinfo;
+    getLocalTime(&timeinfo);
+    if ((timeinfo.tm_mon == (10 - 1)) && (timeinfo.tm_mday == 31)) {
+        // Halloween, 31.10.
+        // TODO show pumpkin as background?
+        bg_color = TFT_DARKORANGE;
+    } else {
+        // TODO add other date based easter eggs? new year? christmas?
+        switch (ui_page) {
+            case UI_LIVINGROOM1:
+            case UI_LIVINGROOM2:
+            case UI_LIVINGROOM3:
+                bg_color = TFT_DARKGREEN;
+                break;
 
-        case UI_BEDROOM:
-            bg_color = TFT_NAVY;
-            break;
+            case UI_COFFEE:
+                bg_color = TFT_BROWN;
+                break;
 
-        default:
-            bg_color = TFT_BLACK;
-            break;
+            case UI_BATHROOM1:
+            case UI_BATHROOM2:
+                bg_color = TFT_DARKCYAN;
+                break;
+
+            case UI_BEDROOM:
+                bg_color = TFT_NAVY;
+                break;
+        }
     }
+
     tft.fillScreen(bg_color);
     tft.setTextColor(TFT_WHITE, bg_color, true);
 
@@ -521,8 +576,8 @@ static void ui_draw_menu(void) {
 #elif defined(SENSOR_LOCATION_BEDROOM)
             ui_page = UI_BEDROOM;
 #elif defined(SENSOR_LOCATION_KITCHEN)
-            ui_page = UI_LIVINGROOM3;
-#else
+            ui_page = UI_COFFEE;
+#else // livingroom, livingroom-ws
             ui_page = UI_LIVINGROOM1;
 #endif
 
@@ -539,6 +594,10 @@ static void ui_draw_menu(void) {
 
         case UI_LIVINGROOM3:
             draw_livingroom3();
+            break;
+
+        case UI_COFFEE:
+            draw_coffee();
             break;
 
         case UI_BATHROOM1:
@@ -775,6 +834,14 @@ void ui_run(void) {
                 }
             }
 
+            // auto redraw coffee timer every 500ms when running and keep from standby
+            if ((ui_page == UI_COFFEE) && coffee_timer_running) {
+                if (next_update_draw == 0) {
+                    next_update_draw = now - 500;
+                    last_touch_time = now;
+                }
+            }
+
             // adjust backlight brightness
             unsigned long diff = now - last_touch_time;
             if ((diff < FULL_BRIGHT_MS) || (ui_page == UI_INFO))  {
@@ -858,6 +925,8 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_workspace);
             } else if (ui_page == UI_LIVINGROOM2) {
                 INVERT_BOOL(ui_status.light_bench);
+            } else if (ui_page == UI_COFFEE) {
+                INVERT_BOOL(ui_status.light_kitchen);
             } else if (ui_page == UI_BATHROOM1) {
                 writeMQTT_bath_fan_force(120);
             } else if (ui_page == UI_BATHROOM2) {
@@ -878,6 +947,13 @@ void ui_run(void) {
                 ui_status.light_box = !on;
                 ui_status.light_kitchen = !on;
                 ui_status.light_pc = !on;
+            } else if (ui_page == UI_COFFEE) {
+                if (coffee_timer_running) {
+                    coffee_timer_running = false;
+                } else {
+                    coffee_timer_running = true;
+                    coffee_timer_start = millis();
+                }
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_BOTH;
             } else if (ui_page == UI_BEDROOM) {
@@ -926,6 +1002,8 @@ void ui_run(void) {
                 INVERT_BOOL(ui_status.light_box);
             } else if (ui_page == UI_LIVINGROOM3) {
                 INVERT_BOOL(ui_status.light_sink);
+            } else if (ui_page == UI_COFFEE) {
+                INVERT_BOOL(ui_status.light_kitchen);
             } else if (ui_page == UI_BATHROOM2) {
                 ui_status.bathroom_lights = BATH_LIGHT_SMALL;
             }

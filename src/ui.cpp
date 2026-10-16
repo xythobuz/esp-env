@@ -111,6 +111,7 @@ const char *ui_page_names[UI_NUM_PAGES] = {
     "Livingroom Main",
     "Livingroom Lights",
     "Kitchen / Livingroom",
+    "Coffee Timer",
     "Bathroom Fan",
     "Bathroom Lights",
     "Bedroom",

@@ -30,6 +30,9 @@
 #include "memory.h"
 #include "ui.h"
 
+#include "christmas_tree_320x240.h"
+#include "halloween_pumpkin_320x240.h"
+
 #include <SPI.h>
 #include <XPT2046_Touchscreen.h>
 #include <TFT_eSPI.h>
@@ -83,7 +86,7 @@
 #error STANDBY_BRIGHTNESS needs to be bigger than LCD_MIN_BRIGHTNESS
 #endif
 
-#define TFT_DARKORANGE  tft.color565(255 / 2, 180 / 2, 0)
+#define TFT_DARKORANGE tft.color565(255, 102, 0)
 
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
@@ -149,7 +152,8 @@ static void draw_button(const char *name,
                         uint32_t x, uint32_t y,
                         uint32_t color,
                         uint32_t w = BTN_W, uint32_t h = BTN_H) {
-    tft.fillRect(x - w / 2, y - h / 2, w, h, color);
+    tft.fillRect(x - w / 2, y - h / 2, w, h, color); // background
+    tft.drawRect(x - w / 2, y - h / 2, w, h, TFT_BLACK); // outline
 
     tft.setTextDatum(MC_DATUM); // middle center
     tft.drawString(name, x, y, 2);
@@ -532,10 +536,23 @@ static void ui_draw_menu(void) {
     getLocalTime(&timeinfo);
     if ((timeinfo.tm_mon == (10 - 1)) && (timeinfo.tm_mday == 31)) {
         // Halloween, 31.10.
-        // TODO show pumpkin as background?
-        bg_color = TFT_DARKORANGE;
+        // show pumpkin as background
+        // optimize by first filling bg fast, then drawing fg pixels over
+        tft.fillScreen(TFT_DARKORANGE);
+        tft.drawBitmap(0, 0,
+                       halloween_pumpkin_320x240,
+                       HALLOWEEN_PUMPKIN_WIDTH, HALLOWEEN_PUMPKIN_HEIGHT,
+                       TFT_BLACK);
+    } else if ((timeinfo.tm_mon == (12 - 1)) && (timeinfo.tm_mday >= 24) && (timeinfo.tm_mday <= 26)) {
+        // Christmas, 24.12. - 26.12.
+        // show christmas background
+        // optimize by first filling bg fast, then drawing fg pixels over
+        tft.fillScreen(tft.color565(165, 0, 0));
+        tft.drawBitmap(0, 0,
+                       christmas_tree_320x240,
+                       CHRISTMAS_TREE_WIDTH, CHRISTMAS_TREE_HEIGHT,
+                       tft.color565(0, 75, 15));
     } else {
-        // TODO add other date based easter eggs? new year? christmas?
         switch (ui_page) {
             case UI_LIVINGROOM1:
             case UI_LIVINGROOM2:
@@ -556,9 +573,10 @@ static void ui_draw_menu(void) {
                 bg_color = TFT_NAVY;
                 break;
         }
+
+        tft.fillScreen(bg_color);
     }
 
-    tft.fillScreen(bg_color);
     tft.setTextColor(TFT_WHITE, bg_color, true);
 
     tft.setTextDatum(TR_DATUM); // top right
@@ -722,7 +740,9 @@ void ui_progress(enum ui_state state) {
         case UI_INIT: {
             tft.fillScreen(TFT_BLACK);
             tft.setTextDatum(MC_DATUM); // middle center
-            tft.drawString("Initializing ESP-ENV", x, y - 32, fontSize);
+            tft.drawString(__DATE__ " " __TIME__, x, y - 96, fontSize);
+            tft.drawString("Initializing ESP-ENV", x, y - 64, fontSize);
+            tft.drawString("Version " ESP_ENV_VERSION, x, y - 32, fontSize);
             tft.drawString("xythobuz.de", x, y, fontSize);
         } break;
 
@@ -765,7 +785,7 @@ void ui_progress(enum ui_state state) {
 
         case UI_WIFI_CONNECTED: {
             tft.setTextDatum(MC_DATUM); // middle center
-            tft.drawString("Connected!", x, y + 64, fontSize);
+            tft.drawString("Connected!", x, y + 96, fontSize);
         } break;
 
         case UI_READY: {

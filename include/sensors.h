@@ -14,9 +14,11 @@
 #ifndef __SENSORS_H__
 #define __SENSORS_H__
 
+#ifdef ENABLE_SHT
 float sht_temp(void);
 float sht_humid(void);
 extern bool found_sht;
+#endif // ENABLE_SHT
 
 #ifdef ENABLE_BME280
 float bme1_temp(void);

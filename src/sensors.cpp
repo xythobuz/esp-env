@@ -46,11 +46,16 @@
 #define I2C_SCL_PIN 0
 
 static TwoWire Wire2;
+
+#ifdef ENABLE_SHT
 static SHT2x sht(SHT_I2C_ADDRESS, &Wire2);
+#endif // ENABLE_SHT
 
 #elif defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_AVR)
 
+#ifdef ENABLE_SHT
 static SHT2x sht(SHT_I2C_ADDRESS, &Wire);
+#endif // ENABLE_SHT
 
 #endif
 
@@ -60,7 +65,9 @@ bool found_bme1 = false;
 bool found_bme2 = false;
 #endif // ENABLE_BME280
 
+#ifdef ENABLE_SHT
 bool found_sht = false;
+#endif // ENABLE_SHT
 
 #ifdef ENABLE_CCS811
 static Adafruit_CCS811 ccs1, ccs2;
@@ -103,8 +110,10 @@ DEF_SENSOR_READ_FUNC(bme1_pressure, bme1.readPressure())
 DEF_SENSOR_READ_FUNC(bme2_pressure, bme2.readPressure())
 #endif // ENABLE_BME280
 
+#ifdef ENABLE_SHT
 DEF_SENSOR_READ_FUNC(sht_temp, sht.GetTemperature() + config.sht_temp_off)
 DEF_SENSOR_READ_FUNC(sht_humid, sht.GetHumidity())
+#endif // ENABLE_SHT
 
 #ifdef ENABLE_CCS811
 
@@ -127,6 +136,7 @@ float ccs2_tvoc(void) {
 static void ccs_update() {
     if (found_ccs1) {
         if (ccs1.available()) {
+#ifdef ENABLE_SHT
             if (found_sht) {
                 ccs1.setEnvironmentalData(sht_humid(), sht_temp());
 #ifdef ENABLE_BME280
@@ -136,6 +146,7 @@ static void ccs_update() {
                 ccs1.setEnvironmentalData(bme2_humid(), bme2_temp());
 #endif // ENABLE_BME280
             }
+#endif // ENABLE_SHT
 
             ccs1_error_code = ccs1.readData();
             ccs1_data_valid = (ccs1_error_code == 0);
@@ -144,6 +155,7 @@ static void ccs_update() {
 
     if (found_ccs2) {
         if (ccs2.available()) {
+#ifdef ENABLE_SHT
             if (found_sht) {
                 ccs2.setEnvironmentalData(sht_humid(), sht_temp());
 #ifdef ENABLE_BME280
@@ -153,6 +165,7 @@ static void ccs_update() {
                 ccs2.setEnvironmentalData(bme2_humid(), bme2_temp());
 #endif // ENABLE_BME280
             }
+#endif // ENABLE_SHT
 
             ccs2_error_code = ccs2.readData();
             ccs2_data_valid = (ccs2_error_code == 0);
@@ -186,6 +199,7 @@ void handleCalibrate() {
 
 #endif // ENABLE_BME280
 
+#ifdef ENABLE_SHT
     if (server.hasArg("sht")) {
         diff = true;
         String off_string = server.arg("sht");
@@ -193,6 +207,7 @@ void handleCalibrate() {
         double meas_temp = sht_temp() - config.sht_temp_off;
         config.sht_temp_off = real_temp - meas_temp;
     }
+#endif // ENABLE_SHT
 
     if (diff) {
 #ifdef ENABLE_BME280
@@ -217,7 +232,7 @@ void initSensors() {
     // Init I2C and try to connect to sensors
 #if defined(ARDUINO_ARCH_ESP8266)
 
-#if defined(ENABLE_BME280) || defined(ENABLE_CCS811)
+#if defined(ENABLE_SHT) || defined(ENABLE_BME280) || defined(ENABLE_CCS811)
     debug.println(F("Wire2"));
     Wire2.begin(I2C_SDA_PIN, I2C_SCL_PIN);
 #endif
@@ -236,7 +251,7 @@ void initSensors() {
 
 #elif defined(ARDUINO_ARCH_ESP32) || defined(ARDUINO_ARCH_AVR)
 
-#if defined(ARDUINO_ARCH_ESP32) && (defined(ENABLE_BME280) || defined(ENABLE_CCS811))
+#if defined(ARDUINO_ARCH_ESP32) && (defined(ENABLE_SHT) || defined(ENABLE_BME280) || defined(ENABLE_CCS811))
     debug.println(F("Wire"));
     Wire.begin();
 #endif
@@ -255,8 +270,10 @@ void initSensors() {
 
 #endif
 
+#ifdef ENABLE_SHT
     debug.println(F("SHT"));
     found_sht = sht.GetAlive();
+#endif // ENABLE_SHT
 
 #ifdef ENABLE_BME280
     // initialize temperature offsets

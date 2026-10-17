@@ -172,6 +172,7 @@ void writeDatabase() {
 
 #endif // ENABLE_BME280
 
+#ifdef ENABLE_SHT
     if (found_sht) {
         InfluxData measurement("environment");
         addTagsSensor(measurement, F("sht21"), F("1"));
@@ -183,6 +184,7 @@ void writeDatabase() {
         writeMeasurement(measurement);
         debug.println(F("Done!"));
     }
+#endif // ENABLE_SHT
 
 #ifdef ENABLE_CCS811
 
@@ -250,6 +252,17 @@ void writeDatabase() {
         debug.println(F("Done!"));
     }
 #endif // FEATURE_RELAIS
+
+#ifdef FEATURE_UI
+    InfluxData measurement("environment");
+    addTagsSensor(measurement, F("cyd"), F("1"));
+
+    measurement.addValue("brightness", ldr_value);
+
+    debug.println(F("Writing brightness"));
+    writeMeasurement(measurement);
+    debug.println(F("Done!"));
+#endif // FEATURE_UI
 }
 
 #else

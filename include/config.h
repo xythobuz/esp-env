@@ -76,7 +76,7 @@
 #define SENSOR_ID "livingroom-tv"
 #elif defined(SENSOR_LOCATION_KITCHEN)
 #define SENSOR_LOCATION "kitchen"
-#define SENSOR_ID "kitchen"
+#define SENSOR_ID SENSOR_LOCATION
 #define UI_LCD_TWO_USB_PORTS
 #define UI_LCD_ROTATE_180
 #elif defined(SENSOR_LOCATION_BEDROOM)
@@ -110,7 +110,14 @@
 #endif // FEATURE_RINGER
 
 #if defined(ARDUINO_ARCH_ESP8266) || defined(ARDUINO_ARCH_ESP32)
+#ifdef FEATURE_UI
+#define LED_RED_PIN 4
+#define LED_GREEN_PIN 16
+#define LED_BLUE_PIN 17
+#define BUILTIN_LED_PIN LED_GREEN_PIN
+#else // FEATURE_UI
 #define BUILTIN_LED_PIN 1
+#endif // FEATURE_UI
 #elif defined(ARDUINO_ARCH_AVR)
 #define BUILTIN_LED_PIN 13
 #endif

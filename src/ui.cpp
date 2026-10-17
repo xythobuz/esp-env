@@ -86,7 +86,9 @@
 #error STANDBY_BRIGHTNESS needs to be bigger than LCD_MIN_BRIGHTNESS
 #endif
 
+#define TFT_DARKRED tft.color565(165, 0, 0)
 #define TFT_DARKORANGE tft.color565(255, 102, 0)
+#define TFT_GREEN_CHR tft.color565(0, 75, 15)
 
 static SPIClass mySpi = SPIClass(HSPI);
 static XPT2046_Touchscreen ts(XPT2046_CS, XPT2046_IRQ);
@@ -124,7 +126,7 @@ const char *ui_page_names[UI_NUM_PAGES] = {
 static enum ui_pages ui_page = UI_START;
 static bool is_touched = false;
 static unsigned long last_ldr = 0;
-static float ldr_value = 0;
+float ldr_value = 0;
 static unsigned long last_touch_time = 0;
 static int curr_brightness = LCD_MAX_BRIGHTNESS;
 static int set_max_brightness = LCD_MAX_BRIGHTNESS;
@@ -538,7 +540,8 @@ static void ui_draw_menu(void) {
         // Halloween, 31.10.
         // show pumpkin as background
         // optimize by first filling bg fast, then drawing fg pixels over
-        tft.fillScreen(TFT_DARKORANGE);
+        bg_color = TFT_DARKORANGE;
+        tft.fillScreen(bg_color);
         tft.drawBitmap(0, 0,
                        halloween_pumpkin_320x240,
                        HALLOWEEN_PUMPKIN_WIDTH, HALLOWEEN_PUMPKIN_HEIGHT,
@@ -547,11 +550,12 @@ static void ui_draw_menu(void) {
         // Christmas, 24.12. - 26.12.
         // show christmas background
         // optimize by first filling bg fast, then drawing fg pixels over
-        tft.fillScreen(tft.color565(165, 0, 0));
+        bg_color = TFT_DARKRED;
+        tft.fillScreen(bg_color);
         tft.drawBitmap(0, 0,
                        christmas_tree_320x240,
                        CHRISTMAS_TREE_WIDTH, CHRISTMAS_TREE_HEIGHT,
-                       tft.color565(0, 75, 15));
+                       TFT_GREEN_CHR);
     } else {
         switch (ui_page) {
             case UI_LIVINGROOM1:

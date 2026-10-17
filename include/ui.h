@@ -81,6 +81,8 @@ void ui_progress(enum ui_state state);
 void ui_push_notification(String text);
 void ui_clear_notification(void);
 
+extern float ldr_value;
+
 #endif // FEATURE_UI
 
 #endif // __UI_H__

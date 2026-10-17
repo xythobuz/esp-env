@@ -224,6 +224,7 @@ void handlePage(WiFiClient &client, int mode, int id) {
 
     ARDUINO_SEND_PARTIAL_PAGE();
 
+#ifdef ENABLE_SHT
     message += F("\n<p>\n");
     if (found_sht) {
         message += F("SHT21:");
@@ -245,6 +246,7 @@ void handlePage(WiFiClient &client, int mode, int id) {
         message += F("SHT21 not connected!");
     }
     message += F("\n</p><hr>\n");
+#endif // ENABLE_SHT
 
 #ifdef ENABLE_CCS811
 

@@ -274,6 +274,7 @@ void setup() {
 #ifdef FEATURE_UI
     debug.println(F("UI Go"));
     ui_progress(UI_READY);
+    digitalWrite(BUILTIN_LED_PIN, HIGH);
 #endif // FEATURE_UI
 }
 
@@ -304,7 +305,7 @@ void loop() {
     lora_run();
 #endif // FEATURE_LORA
 
-#ifndef FEATURE_LORA
+#if (!defined(FEATURE_LORA)) && (!defined(FEATURE_UI))
     // blink heartbeat LED
     unsigned long time = millis();
     if ((time - last_led_blink_time) >= LED_BLINK_INTERVAL) {

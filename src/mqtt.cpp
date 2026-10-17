@@ -60,6 +60,7 @@ static void writeMQTT() {
 
     bool wrote = false;
 
+#ifdef ENABLE_SHT
     if (found_sht) {
         mqtt.publish(SENSOR_LOCATION "/temperature", String(sht_temp()).c_str(), true);
         mqtt.publish(SENSOR_LOCATION "/humidity", String(sht_humid()).c_str(), true);
@@ -77,6 +78,7 @@ static void writeMQTT() {
         wrote = true;
 #endif // ENABLE_BME280
     }
+#endif // ENABLE_SHT
 
 #ifdef ENABLE_CCS811
     if (found_ccs1) {
